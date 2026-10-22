@@ -119,3 +119,75 @@ html[data-reduced-motion="true"] .animate-lite-sway,
 html[data-reduced-motion="true"] .animate-lite-sparkle {
   animation: none !important;
 }
+
+/* ── Pirouette rig ─────────────────────────────────────────────────────────
+   Moves are attribute-driven: the player sets data-move on <svg class="pir">
+   and each inner group animates with 2D transforms only. Durations come from
+   --beat (seconds per beat), set on the svg by the player from the song's
+   tempo. rotateY (Twirl) lives on the svg root inside .pir-wrap, because
+   Safari ignores 3D transforms on inner SVG elements. */
+.pir-wrap { display: inline-block; perspective: 600px; line-height: 0; }
+.pir-wrap.pir-sway { animation: lite-sway 2.6s ease-in-out infinite; transform-origin: 50% 100%; }
+.pir { --beat: 0.909s; transform-style: preserve-3d; }
+.pir g[class^="pir-"] { transform-box: view-box; }
+.pir-leg-l { transform-origin: 42px 112px; }  /* standing leg pivots at its foot */
+.pir-leg-r { transform-origin: 56px 94px; }   /* pointed leg pivots at the hip */
+.pir-upper { transform-origin: 50px 100px; }  /* torso + arms + head together */
+.pir-arm-l { transform-origin: 36px 74px; }   /* shoulders */
+.pir-arm-r { transform-origin: 64px 74px; }
+.pir-head  { transform-origin: 50px 64px; }   /* the neck */
+
+/* Plié: knees bend, the whole upper body sinks, arms lower a little */
+@keyframes pir-plie-legs  { 0%, 100% { transform: scaleY(1); }     50% { transform: scaleY(0.9); } }
+@keyframes pir-plie-upper { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
+@keyframes pir-plie-arm-l { 0%, 100% { transform: rotate(0); }     50% { transform: rotate(-30deg); } }
+@keyframes pir-plie-arm-r { 0%, 100% { transform: rotate(0); }     50% { transform: rotate(30deg); } }
+.pir[data-move="plie"] .pir-leg-l,
+.pir[data-move="plie"] .pir-leg-r { animation: pir-plie-legs calc(var(--beat) * 2) ease-in-out both; }
+.pir[data-move="plie"] .pir-upper { animation: pir-plie-upper calc(var(--beat) * 2) ease-in-out both; }
+.pir[data-move="plie"] .pir-arm-l { animation: pir-plie-arm-l calc(var(--beat) * 2) ease-in-out both; }
+.pir[data-move="plie"] .pir-arm-r { animation: pir-plie-arm-r calc(var(--beat) * 2) ease-in-out both; }
+
+/* Reach: arms rise to fifth position, a little lift through the body */
+@keyframes pir-reach-arm-l { 0%, 100% { transform: rotate(0); }     35%, 70% { transform: rotate(62deg); } }
+@keyframes pir-reach-arm-r { 0%, 100% { transform: rotate(0); }     35%, 70% { transform: rotate(-62deg); } }
+@keyframes pir-reach-upper { 0%, 100% { transform: translateY(0); } 35%, 70% { transform: translateY(-3px); } }
+.pir[data-move="reach"] .pir-arm-l { animation: pir-reach-arm-l calc(var(--beat) * 2) ease-in-out both; }
+.pir[data-move="reach"] .pir-arm-r { animation: pir-reach-arm-r calc(var(--beat) * 2) ease-in-out both; }
+.pir[data-move="reach"] .pir-upper { animation: pir-reach-upper calc(var(--beat) * 2) ease-in-out both; }
+
+/* Twirl: a full spin around her own axis, on the root (3D) */
+.pir[data-move="twirl"] { animation: lite-pirouette calc(var(--beat) * 4) ease-in-out both; }
+
+/* Arabesque: the pointed leg sweeps up behind, body tilts to balance, front arm forward */
+@keyframes pir-arabesque-leg   { 0%, 100% { transform: rotate(0); } 35%, 70% { transform: rotate(-70deg); } }
+@keyframes pir-arabesque-upper { 0%, 100% { transform: rotate(0); } 35%, 70% { transform: rotate(-8deg); } }
+@keyframes pir-arabesque-arm-l { 0%, 100% { transform: rotate(0); } 35%, 70% { transform: rotate(45deg); } }
+.pir[data-move="arabesque"] .pir-leg-r { animation: pir-arabesque-leg calc(var(--beat) * 2) ease-in-out both; }
+.pir[data-move="arabesque"] .pir-upper { animation: pir-arabesque-upper calc(var(--beat) * 2) ease-in-out both; }
+.pir[data-move="arabesque"] .pir-arm-l { animation: pir-arabesque-arm-l calc(var(--beat) * 2) ease-in-out both; }
+
+/* Bow: the upper body folds, head dips, arms open and lower */
+@keyframes pir-bow-upper { 0%, 100% { transform: rotate(0); } 40%, 75% { transform: rotate(22deg); } }
+@keyframes pir-bow-head  { 0%, 100% { transform: rotate(0); } 40%, 75% { transform: rotate(14deg); } }
+@keyframes pir-bow-arm-l { 0%, 100% { transform: rotate(0); } 40%, 75% { transform: rotate(-45deg); } }
+@keyframes pir-bow-arm-r { 0%, 100% { transform: rotate(0); } 40%, 75% { transform: rotate(45deg); } }
+.pir[data-move="bow"] .pir-upper { animation: pir-bow-upper calc(var(--beat) * 2) ease-in-out both; }
+.pir[data-move="bow"] .pir-head  { animation: pir-bow-head  calc(var(--beat) * 2) ease-in-out both; }
+.pir[data-move="bow"] .pir-arm-l { animation: pir-bow-arm-l calc(var(--beat) * 2) ease-in-out both; }
+.pir[data-move="bow"] .pir-arm-r { animation: pir-bow-arm-r calc(var(--beat) * 2) ease-in-out both; }
+
+/* Calm mode / reduced motion: the rig holds her front pose */
+@media (prefers-reduced-motion: reduce) {
+  .pir[data-move], .pir[data-move] *, .pir-wrap.pir-sway { animation: none !important; }
+}
+html[data-reduced-motion="true"] .pir[data-move],
+html[data-reduced-motion="true"] .pir[data-move] *,
+html[data-reduced-motion="true"] .pir-wrap.pir-sway { animation: none !important; }
+
+/* Big spin: one and a half turns, on the root like Twirl */
+@keyframes lite-grand-spin {
+  0% { transform: rotateY(0deg); }
+  100% { transform: rotateY(1080deg); }
+}
+.pir[data-move="grand_spin"] { animation: lite-grand-spin calc(var(--beat) * 4) ease-in-out both; }

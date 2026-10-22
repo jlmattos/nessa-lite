@@ -1,15 +1,28 @@
 /**
- * Tiny synthesized sounds — no files, no network, a few hundred bytes.
- * iPad Safari only lets audio start inside a user gesture, and every call
- * here happens in a tap handler, so the context resumes on first use.
+ * All sound in the app goes through one shared AudioContext, one master
+ * gain (soft by default) and a 6 kHz low-pass, so nothing can ever be shrill
+ * or loud. iPad Safari only lets audio start inside a user gesture, so every
+ * entry point here is called from a tap handler and resumes the context.
  * Callers check the `sound` setting; this module just plays.
  */
 let ctx: AudioContext | null = null;
+let master: GainNode | null = null;
 
-function audio(): AudioContext | null {
+const VOLUME = { soft: 0.25, medium: 0.5 } as const;
+export type Volume = keyof typeof VOLUME;
+
+export function getAudioContext(): AudioContext | null {
   if (typeof window === "undefined") return null;
   try {
-    ctx ??= new AudioContext();
+    if (!ctx) {
+      ctx = new AudioContext();
+      master = ctx.createGain();
+      master.gain.value = VOLUME.soft;
+      const lowpass = ctx.createBiquadFilter();
+      lowpass.type = "lowpass";
+      lowpass.frequency.value = 6000;
+      master.connect(lowpass).connect(ctx.destination);
+    }
     if (ctx.state === "suspended") void ctx.resume();
     return ctx;
   } catch {
@@ -17,33 +30,78 @@ function audio(): AudioContext | null {
   }
 }
 
-/** One soft sine note with a quick swell and a long, gentle tail. */
-function tone(ac: AudioContext, freq: number, start: number, dur: number, peak = 0.11) {
+/** The node every voice connects to. Null when audio is unavailable. */
+export function masterOut(): GainNode | null {
+  return getAudioContext() ? master : null;
+}
+
+export function setVolume(v: Volume) {
+  const ac = getAudioContext();
+  if (ac && master) master.gain.setTargetAtTime(VOLUME[v], ac.currentTime, 0.05);
+}
+
+export function midiToHz(midi: number): number {
+  return 440 * Math.pow(2, (midi - 69) / 12);
+}
+
+/**
+ * One note: quick swell, long gentle tail. `peak` is pre-master; chimes use
+ * ~0.45 and music notes ~0.3 so chimes always sit above the music.
+ */
+export function tone(
+  ac: AudioContext,
+  out: AudioNode,
+  freq: number,
+  start: number,
+  dur: number,
+  peak = 0.45,
+  type: OscillatorType = "sine",
+  attack = 0.025
+) {
   const osc = ac.createOscillator();
   const gain = ac.createGain();
-  osc.type = "sine";
+  osc.type = type;
   osc.frequency.value = freq;
   gain.gain.setValueAtTime(0, start);
-  gain.gain.linearRampToValueAtTime(peak, start + 0.025);
+  gain.gain.linearRampToValueAtTime(peak, start + attack);
   gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
-  osc.connect(gain).connect(ac.destination);
+  osc.connect(gain).connect(out);
   osc.start(start);
   osc.stop(start + dur + 0.05);
 }
 
 /** Two-note chime for a finished movement (C5 → G5). */
 export function playDone() {
-  const ac = audio();
-  if (!ac) return;
+  const ac = getAudioContext();
+  const out = masterOut();
+  if (!ac || !out) return;
   const t = ac.currentTime;
-  tone(ac, 523.25, t, 0.55);
-  tone(ac, 783.99, t + 0.13, 0.7);
+  tone(ac, out, 523.25, t, 0.55);
+  tone(ac, out, 783.99, t + 0.13, 0.7);
 }
 
 /** Slow rising chord for finishing the whole workout (C major, one note at a time). */
 export function playFinish() {
-  const ac = audio();
-  if (!ac) return;
+  const ac = getAudioContext();
+  const out = masterOut();
+  if (!ac || !out) return;
   const t = ac.currentTime;
-  [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(ac, f, t + i * 0.16, 1.2, 0.09));
+  [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(ac, out, f, t + i * 0.16, 1.2, 0.36));
+}
+
+/** A single move note (pentatonic, 0.5 s decay) — editor taps and each move start. */
+export function playNote(midi: number, opts: { dur?: number; peak?: number } = {}) {
+  const ac = getAudioContext();
+  const out = masterOut();
+  if (!ac || !out) return;
+  tone(ac, out, midiToHz(midi), ac.currentTime, opts.dur ?? 0.5, opts.peak ?? 0.3);
+}
+
+/** The final chord at the Bow: every note together, 1.8 s decay. */
+export function playChord(midis: number[], dur = 1.8) {
+  const ac = getAudioContext();
+  const out = masterOut();
+  if (!ac || !out) return;
+  const t = ac.currentTime;
+  for (const m of midis) tone(ac, out, midiToHz(m), t, dur, 0.22, "sine", 0.04);
 }

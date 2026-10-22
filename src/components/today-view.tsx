@@ -8,7 +8,7 @@ import {
   startWorkout, completeMovement, undoCompletion, finishWorkout, reopenWorkout, cancelWorkout,
 } from "@/actions/workouts";
 import { SetFlexToast, CatUnlock } from "@/components/cats";
-import { BallerinaCat } from "@/components/ballerina-cat";
+import { Pirouette } from "@/components/dance/pirouette";
 import { targetLabel } from "@/lib/format";
 import { playDone, playFinish } from "@/lib/sound";
 
@@ -158,7 +158,7 @@ export function TodayView({ data }: { data: TodayData }) {
       {completed && (
         <Card className="p-4 border-success/50 bg-success-soft flex items-center gap-4">
           <div className={calm ? "shrink-0" : "shrink-0 animate-lite-hop"}>
-            <BallerinaCat size={56} dancing={!calm} />
+            <Pirouette size={56} dancing={!calm} />
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-success text-lg">Workout done. 🎉</p>

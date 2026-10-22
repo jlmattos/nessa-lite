@@ -10,6 +10,9 @@ lives in `GAME-DESIGN.md`; how to work on the code is in `CLAUDE.md`.
 
 ## Running it
 
+The click-by-click version is in `docs/setup.md`.
+
+
 1. Create a Supabase project for nessa-lite and run `schema.sql` in its SQL editor.
 2. Create `.env.local` with `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SECRET_KEY`
    (optional `HOME_TZ`, default `America/New_York`).

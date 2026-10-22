@@ -70,9 +70,11 @@ version:
 - **§10 records Jose's decisions** on the twenty open questions (22 Oct 2026).
   If one changes, change the doc first, then the code.
 
-The scaffold predates the doc: `/dance` still shows only a Twirl button, and
-none of the §8 tables exist yet. The copy already uses the doc's names
-("Stage" tab, "Go to the stage", "Finish today's workout?").
+Status: Phase 0 is built (the rig, five moves including Big spin, the Bow,
+two loops, the beat clock) and waits for Jose's iPad test at `/spike`.
+`/dance` still shows only a Twirl button, and none of the §8 tables exist
+yet. The copy already uses the doc's names ("Stage" tab, "Go to the stage",
+"Finish today's workout?").
 
 ## Commands
 
@@ -101,13 +103,20 @@ renders (settings fall back to defaults), but every data query throws.
   feeds the collection page; `dance.ts` says whether today is unlocked;
   `settings.ts` never throws.
 - `src/components/` — `today-view.tsx` (schedule strip, movement cards,
-  finish flow), `dance-stage.tsx`, `ballerina-cat.tsx` (Pirouette, inline
-  SVG), `cats.tsx` (the ten figurine cats, unchanged from lift-lite),
-  `routine-editor.tsx`, `collection-view.tsx`, `settings-card.tsx`,
-  `bottom-nav.tsx`, `number-input.tsx`.
-- `src/lib/` — `collection.ts` (cats by workout count), `sound.ts` (Web
-  Audio chimes), `settings.ts` (type + defaults), `dates.ts` (`todayLocal`),
-  `format.ts`, `db.ts` (lazy Supabase client, server-only).
+  finish flow), `dance-stage.tsx`, `cats.tsx` (the ten figurine cats,
+  unchanged from lift-lite), `routine-editor.tsx`, `collection-view.tsx`,
+  `settings-card.tsx`, `bottom-nav.tsx`, `number-input.tsx`.
+- `src/components/dance/` — `pirouette.tsx` (the rig: named SVG groups moved
+  by `data-move`, costume colours as CSS variables) and `spike-view.tsx` (the
+  Phase 0 test harness behind `/spike`, off the nav, no database needed).
+  Remove the spike once Phase 1a replaces the Twirl button.
+- `src/lib/` — `collection.ts` (cats by workout count), `sound.ts` (the one
+  AudioContext, master gain + low-pass, chimes and notes), `music.ts` (the
+  beat-clock sequencer and the song loops), `dance-player.ts`
+  (`useDancePlayer`: drives the rig from the clock, Bow at the end, stops on
+  hide/unmount), `dance-content.ts` (the stage catalog: moves, presets),
+  `settings.ts` (type + defaults), `dates.ts` (`todayLocal`), `format.ts`,
+  `db.ts` (lazy Supabase client, server-only).
 - `schema.sql` — run by hand in the Supabase SQL editor. No migration
   runner; add numbered `migration-000N-*.sql` files for schema changes.
 - `scripts/backup.mjs` + `.github/workflows/backup.yml` — nightly snapshot to
@@ -115,6 +124,8 @@ renders (settings fall back to defaults), but every data query throws.
   repository secrets exist (Jose wants backups).
 - `GAME-DESIGN.md` — the dance game: arc, mini-games, unlocks, build phases.
   Read it before touching anything under `/dance`.
+- `docs/setup.md` — Jose's step-by-step for Supabase, Vercel, backup secrets
+  and the iPad home screen.
 
 ## Domain rules the code depends on
 
@@ -146,10 +157,14 @@ renders (settings fall back to defaults), but every data query throws.
   `text-accent-deep`, `border-line`, `rounded-[1.25rem]` cards). Light theme
   only. Target is an iPad: `max-w-lg`, tap targets at least 44 px, primary
   buttons `h-14` to `h-16`.
-- Every animation uses a class listed in the calm-mode block at the bottom of
-  `globals.css`. Add any new animation class to that block.
-- Sound only from `src/lib/sound.ts`, only inside a tap handler, only after
-  checking `settings.sound`.
+- Every animation uses a class listed in a calm-mode block in `globals.css`
+  (one for the app classes, one for the rig). Add any new animation class or
+  `data-move` selector there. Rig moves animate inner groups with 2D
+  transforms only; rotateY goes on the svg root (Safari).
+- Sound only through `src/lib/sound.ts` and `src/lib/music.ts` (one shared
+  AudioContext behind a master gain and a 6 kHz low-pass), only started inside
+  a tap handler, only after checking `settings.sound`. Chimes stay louder than
+  music. Every start and stop is a gain ramp.
 - Server actions throw plain `Error` with a friendly message and always
   `revalidatePath` after a write. Client components catch and show the message.
 - No model identifiers in commits, code, or comments.

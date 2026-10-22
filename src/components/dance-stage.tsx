@@ -1,17 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useRef } from "react";
 import Link from "next/link";
 import type { DanceData } from "@/actions/dance";
-import { BallerinaCat } from "@/components/ballerina-cat";
+import { Pirouette } from "@/components/dance/pirouette";
+import { useDancePlayer } from "@/lib/dance-player";
 
 /**
  * Pirouette's stage. Locked until today's workout is finished. The game
  * itself is designed in GAME-DESIGN.md and not built yet — for now she twirls
- * on request, so Nessa can meet her early.
+ * on request (through the Phase 0 rig and player), so Nessa can meet her early.
  */
 export function DanceStage({ data }: { data: DanceData }) {
-  const [twirl, setTwirl] = useState(0);
+  const rig = useRef<HTMLDivElement>(null);
+  const player = useDancePlayer(rig, { sound: data.settings.sound });
   const calm = data.settings.reducedMotion;
 
   return (
@@ -27,9 +29,7 @@ export function DanceStage({ data }: { data: DanceData }) {
           {/* stage floor */}
           <div className="absolute bottom-0 inset-x-7 h-6 bg-line/70 rounded-t-[50%]" aria-hidden />
 
-          <div key={twirl} className={twirl > 0 && !calm ? "animate-lite-pirouette" : undefined}>
-            <BallerinaCat size={170} dancing={data.unlocked && !calm} />
-          </div>
+          <Pirouette ref={rig} size={170} dancing={data.unlocked && !calm} />
           <p className="mt-3 font-semibold text-lg">Pirouette</p>
           <p className="text-xs text-muted">the ballerina cat</p>
         </div>
@@ -42,7 +42,7 @@ export function DanceStage({ data }: { data: DanceData }) {
             You finished today’s workout. The dance game is still being built — for now, Pirouette will twirl whenever you ask.
           </p>
           <button
-            onClick={() => setTwirl((n) => n + 1)}
+            onClick={() => player.playMove("twirl")}
             className="mt-4 w-full h-14 rounded-2xl bg-accent text-white text-lg font-semibold shadow-sm active:scale-[0.99] transition-transform"
           >
             Twirl! ✨
