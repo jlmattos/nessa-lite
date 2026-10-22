@@ -9,6 +9,9 @@ import { MOVE_BY_KEY, FEATURES, PIROUETTES_CHOICE_NAME, type MoveKey } from "@/l
  * Pirouette's choice, Little Waltz, Twirl Song, New dance (dimmed until the
  * editor ships). Under it, "My dances" (hers, newest first). The last-danced
  * dance is preselected; the default path is one tap.
+ *
+ * On recital day it shows "Today's dances" instead (read-only, §3.7); on the
+ * visit after a late recital, one line above the grid says it plays first.
  */
 export function ChooseDance({
   data,
@@ -32,6 +35,41 @@ export function ChooseDance({
   const hers = data.dances.filter((d) => !d.presetKey);
   const editor = FEATURES.find((f) => f.key === "new_dance")!;
   const editorUnlocked = data.unlockedKeys.includes(editor.key) && editor.shipped;
+  const recital = data.recital;
+
+  if (recital?.onTime) {
+    return (
+      <div className="space-y-3">
+        <div className="rounded-[1.25rem] bg-surface border border-line p-4 flex items-center gap-3">
+          <Pirouette size={120} costume={costume} />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs uppercase tracking-wider text-muted font-semibold">Recital {recital.program}</p>
+            <p className="font-semibold text-lg leading-tight mt-0.5">Today’s dances</p>
+            <p className="text-sm text-muted mt-1">Pirouette dances them all, then the finale.</p>
+          </div>
+        </div>
+        <div className="space-y-2">
+          {recital.dances.map((d, k) => (
+            <div key={k} className="rounded-[1.25rem] bg-surface border border-line px-4 py-3">
+              <p className="text-xs text-muted">Dance {k + 1}</p>
+              <p className="font-semibold">{d.name}</p>
+              <MoveStrip moves={d.moves} slots={d.moves.length} />
+            </div>
+          ))}
+          <div className="rounded-[1.25rem] bg-surface border border-line px-4 py-3">
+            <p className="font-semibold">Finale</p>
+            <MoveStrip moves={recital.finale} slots={recital.finale.length} />
+          </div>
+        </div>
+        <button
+          onClick={onNext}
+          className="w-full h-16 rounded-2xl bg-accent text-white text-xl font-semibold shadow-sm active:scale-[0.99] transition-transform"
+        >
+          Next: Recital
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
@@ -43,6 +81,12 @@ export function ChooseDance({
           <MoveStrip moves={selected.moves} slots={data.slotCount} />
         </div>
       </div>
+
+      {recital && (
+        <p className="rounded-[1.25rem] bg-accent-soft/60 border border-accent/40 px-4 py-3 text-sm font-medium">
+          Recital {recital.program} is ready. It plays first.
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <DanceTile name={PIROUETTES_CHOICE_NAME} icon="🩰" selected={selectedId == null} onClick={() => onSelect(null)} />

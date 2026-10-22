@@ -9,19 +9,27 @@ import { StageBox, type CurtainState } from "@/components/dance/stage";
 import { FigurineCat } from "@/components/cats";
 
 /**
- * Step 4 (GAME-DESIGN.md §3.9, §3.10). "The end.", where she is in the
- * Program, then two buttons: Done for today (persisted) and Dance again
- * (replays exactly what just played; nothing more is written).
+ * Step 4 (GAME-DESIGN.md §3.9, §3.10). The curtains close, the cat friends in
+ * the front row clap (one hop each), "The end.", where she is in the Program
+ * (or "Recital N complete." and what is new on the stage), then two buttons:
+ * Done for today (persisted) and Dance again (replays exactly what just
+ * played; nothing more is written). Posters arrive in Phase 2.
  */
 export function Bow({
   data,
   look,
   plan,
+  decorations,
+  newDecorations,
   onDanceAgain,
 }: {
   data: StageData;
   look: Look;
   plan: PerformancePlan;
+  /** Everything on the stage now, including what tonight's recital added. */
+  decorations: string[];
+  /** Names of the decorations tonight's recital added, for the one announcement. */
+  newDecorations: string[];
   onDanceAgain: () => void;
 }) {
   const router = useRouter();
@@ -32,6 +40,8 @@ export function Bow({
   const curtains: CurtainState = calm ? "closed" : "closing";
   // What just played decides the line, not the text computed before the dance.
   const line = plan.recital ? `Recital ${plan.recital.program} complete.` : data.programLine.text;
+  // On recital day the recital was the show; on other evenings name the dance she chose.
+  const danceName = plan.recital?.onTime ? null : plan.dance.name;
 
   function done() {
     setError(null);
@@ -47,16 +57,16 @@ export function Bow({
 
   return (
     <div className="space-y-3">
-      <StageBox stageKey={look.stage} curtains={curtains} decorations={data.decorations}>
-        <div className={calm ? "" : "animate-lite-hop"}>
-          <Pirouette size={150} costume={look.costume} />
-        </div>
+      <StageBox stageKey={look.stage} curtains={curtains} decorations={decorations}>
+        <Pirouette size={150} costume={look.costume} />
       </StageBox>
 
       {data.earnedCats.length > 0 && (
-        <div className="flex justify-center gap-1 -mt-1" aria-label="Your cat friends in the front row">
-          {data.earnedCats.slice(0, 10).map((c) => (
-            <FigurineCat key={c} variant={c} size={30} />
+        <div className="rounded-[1.25rem] bg-surface border border-line px-3 py-2 flex justify-center gap-1" aria-label="Your cat friends clap in the front row">
+          {data.earnedCats.map((c, i) => (
+            <span key={c} className={calm ? "" : "animate-lite-hop"} style={calm ? undefined : { animationDelay: `${i * 90}ms` }}>
+              <FigurineCat variant={c} size={30} />
+            </span>
           ))}
         </div>
       )}
@@ -64,7 +74,10 @@ export function Bow({
       <div className="rounded-[1.25rem] bg-surface border border-line p-5 text-center">
         <p className="text-2xl font-bold">The end.</p>
         <p className="text-sm text-muted mt-1">{line}</p>
-        <p className="text-xs text-muted mt-2">{plan.dance.name}</p>
+        {newDecorations.length > 0 && (
+          <p className="text-sm font-medium mt-1">New on the stage: {newDecorations.join(" · ")}</p>
+        )}
+        {danceName && <p className="text-xs text-muted mt-2">{danceName}</p>}
         {error && <p className="text-sm text-accent-deep mt-2">⚠ {error}</p>}
         <div className="mt-4 space-y-2">
           <button

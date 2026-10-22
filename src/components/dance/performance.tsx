@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition, type CSSProperties, type MouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition, type CSSProperties, type MouseEvent } from "react";
 import type { StageData, Look, PerformancePlan } from "@/actions/dance";
 import { startDance } from "@/actions/dance";
 import { Pirouette } from "@/components/dance/pirouette";
 import { StageBox, type CurtainState } from "@/components/dance/stage";
 import { MoveStrip } from "@/components/dance/choose-dance";
-import { useDancePlayer } from "@/lib/dance-player";
-import { MOVE_BY_KEY, NONE_KEY, PIROUETTES_CHOICE_NAME, QUIET_KEY, SPARKLES } from "@/lib/dance-content";
+import { FigurineCat } from "@/components/cats";
+import { useDancePlayer, CARD_BEATS, type ShowItem } from "@/lib/dance-player";
+import { MOVE_BY_KEY, NONE_KEY, PIROUETTES_CHOICE_NAME, QUIET_KEY, SPARKLES, type MoveKey } from "@/lib/dance-content";
 import { SONGS, type Song } from "@/lib/music";
 import { playNote, setVolume } from "@/lib/sound";
 
@@ -15,24 +16,52 @@ const CATCH_WINDOW_MS = 400;
 const CURTAIN_OPEN_MS = 2500;
 const PASS_MS = 800;
 const GOLD = "#e6b422";
-const STALL_MESSAGE = "Sound couldn’t start — tap Start the dance once more.";
+const STALL_MESSAGE = "Sound couldn’t start — tap the button below once more.";
 
 /** One Sparkle catch sparkle on its way to the ring. */
 type Flight = { id: number; at: number; midi: number; phase: "drift" | "pass" };
+type Segment = { name: string; moves: MoveKey[] };
 
 /**
- * Step 3 (GAME-DESIGN.md §3.8, §5.3). "Start the dance" writes the row, the
- * curtains part over 2.5 s (a tap skips), then the music fades in and
- * Pirouette dances on the beat clock. The Sparkle catch lane sends one
- * sparkle per move to the still ring at her chest; a tap within ±400 ms of
- * its arrival catches it, any other tap leaves a small sparkle. Stop, the
- * natural end, and the page being hidden all go to the Bow.
+ * The show for a plan (GAME-DESIGN.md §5.4). A plain evening is one dance. A
+ * recital is "Recital N", each of the Program's dances with its own card, a
+ * "Finale" card and the finale; on a late visit her own dance follows with
+ * "Now your dance · …". Then the Bow.
+ */
+function buildShow(p: PerformancePlan): { items: ShowItem[]; segments: Segment[] } {
+  const items: ShowItem[] = [];
+  const segments: Segment[] = [];
+  const add = (seg: Segment, card: string | null) => {
+    const s = segments.length;
+    segments.push(seg);
+    if (card) items.push({ kind: "card", text: card, beats: CARD_BEATS });
+    seg.moves.forEach((key, index) => items.push({ kind: "move", key, segment: s, index }));
+  };
+  if (p.recital) {
+    items.push({ kind: "card", text: `Recital ${p.recital.program}`, beats: CARD_BEATS });
+    p.recital.dances.forEach((d, k) => add(d, `Dance ${k + 1} · ${d.name}`));
+    add({ name: "Finale", moves: p.recital.finale }, "Finale");
+    if (!p.recital.onTime) add(p.dance, `Now your dance · ${p.dance.name}`);
+  } else {
+    add(p.dance, null);
+  }
+  return { items, segments };
+}
+
+/**
+ * Step 3 (GAME-DESIGN.md §3.8, §5.3, §5.4). "Start the dance" (or "Start the
+ * recital") writes the row, the curtains part over 2.5 s (a tap skips), then
+ * the music fades in and the show plays on the beat clock. The Sparkle catch
+ * lane sends one sparkle per move to the still ring at her chest; a tap within
+ * ±400 ms of its arrival catches it, any other tap leaves a small sparkle.
+ * Stop, the natural end, and the page being hidden all go to the Bow.
  */
 export function Performance({
   data,
   look,
   danceId,
   replay,
+  decorations,
   onBow,
 }: {
   data: StageData;
@@ -40,6 +69,8 @@ export function Performance({
   danceId: string | null;
   /** A plan to replay ("Dance again") instead of starting a new one. */
   replay: PerformancePlan | null;
+  /** Decorations on the stage tonight (frozen at open; new ones arrive at the Bow). */
+  decorations: string[];
   onBow: (plan: PerformancePlan, stopped: boolean) => void;
 }) {
   const rig = useRef<HTMLDivElement>(null);
@@ -97,12 +128,10 @@ export function Performance({
   }, []);
 
   /** A move just started on the beat: its sparkle arrives two beats from now. */
-  function launchSparkle(index: number) {
+  function launchSparkle(key: MoveKey) {
     if (!laneOn) return;
-    const moves = planRef.current?.dance.moves ?? [];
-    const move = MOVE_BY_KEY[moves[index]];
     const id = nextId.current++;
-    updateFlights((f) => [...f, { id, at: performance.now() + 2 * spbMs, midi: move?.midi ?? 79, phase: "drift" }]);
+    updateFlights((f) => [...f, { id, at: performance.now() + 2 * spbMs, midi: MOVE_BY_KEY[key]?.midi ?? 79, phase: "drift" }]);
     later(() => {
       if (!flightsRef.current.some((x) => x.id === id)) return; // caught
       updateFlights((f) => f.map((x) => (x.id === id ? { ...x, phase: "pass" } : x)));
@@ -124,7 +153,7 @@ export function Performance({
     },
   });
 
-  // The dance and its Bow move have played: on to the Bow step (it closes the curtains).
+  // The show and its Bow move have played: on to the Bow step (it closes the curtains).
   useEffect(() => {
     if (player.state === "done" && planRef.current) onBow(planRef.current, false);
   }, [player.state, onBow]);
@@ -136,7 +165,7 @@ export function Performance({
     pendingRef.current = null;
     if (!p) return;
     setCurtains("open");
-    const ok = player.play(p.dance.moves, song, 66);
+    const ok = player.playShow(buildShow(p).items, song, 66);
     if (!ok) {
       setCurtains("closed");
       setError(STALL_MESSAGE);
@@ -209,9 +238,12 @@ export function Performance({
     later(() => setTaps((t) => t.filter((s) => s.id !== id)), 600);
   }
 
+  // What the strip shows: the segment dancing now, or before the start, tonight's dance.
+  const show = useMemo(() => (plan ? buildShow(plan) : null), [plan]);
   const selected = danceId == null ? null : data.dances.find((d) => d.id === danceId) ?? null;
-  const moves = plan?.dance.moves ?? selected?.moves ?? data.pirouettesChoice;
-  const title = plan?.dance.name ?? selected?.name ?? PIROUETTES_CHOICE_NAME;
+  const fallback: Segment = { name: selected?.name ?? PIROUETTES_CHOICE_NAME, moves: selected?.moves ?? data.pirouettesChoice };
+  const seg = show ? show.segments[player.segment ?? 0] ?? show.segments[0] : fallback;
+  const isRecital = plan ? !!plan.recital : !!data.recital;
 
   return (
     <div className="space-y-3">
@@ -219,7 +251,7 @@ export function Performance({
         <StageBox
           stageKey={look.stage}
           curtains={curtains}
-          decorations={data.decorations}
+          decorations={decorations}
           onTap={curtains === "opening" || playing ? onStageTap : undefined}
         >
           <div className="relative">
@@ -268,6 +300,14 @@ export function Performance({
             )}
           </div>
         </StageBox>
+        {/* the title card: static, two beats, between dances */}
+        {player.card && (
+          <div className="absolute inset-x-6 top-[18%] pointer-events-none flex justify-center" aria-live="polite">
+            <div className="rounded-2xl bg-surface/95 border border-line shadow-lg px-6 py-4 text-center">
+              <p className="text-2xl font-bold">{player.card}</p>
+            </div>
+          </div>
+        )}
         {/* off-beat tap sparkles */}
         {taps.map((t) => (
           <span key={t.id} className="absolute pointer-events-none text-xl animate-lite-tap-sparkle" style={{ left: t.x - 10, top: t.y - 10, color: laneColor }} aria-hidden>✦</span>
@@ -282,13 +322,20 @@ export function Performance({
         )}
       </div>
 
+      {/* the front row at a recital: her cat friends watch, still, until the Bow */}
+      {isRecital && data.earnedCats.length > 0 && (
+        <div className="rounded-[1.25rem] bg-surface border border-line px-3 py-2 flex justify-center gap-1" aria-label="Your cat friends in the front row">
+          {data.earnedCats.map((c) => <FigurineCat key={c} variant={c} size={30} />)}
+        </div>
+      )}
+
       {laneOn && playing && (
         <p className="text-sm text-center text-muted px-2">Tap when the sparkle reaches Pirouette. You can also just watch.</p>
       )}
 
       <div className="rounded-[1.25rem] bg-surface border border-line px-4 py-3">
-        <p className="text-xs uppercase tracking-wider text-muted font-semibold">{title}</p>
-        <MoveStrip moves={moves} slots={Math.max(data.slotCount, moves.length)} current={player.currentIndex} />
+        <p className="text-xs uppercase tracking-wider text-muted font-semibold">{seg.name}</p>
+        <MoveStrip moves={seg.moves} slots={Math.max(data.slotCount, seg.moves.length)} current={player.card ? null : player.currentIndex} />
       </div>
 
       {error && <p className="text-sm text-accent-deep px-1">⚠ {error}</p>}
@@ -299,7 +346,7 @@ export function Performance({
           disabled={isPending}
           className="w-full h-16 rounded-2xl bg-accent text-white text-xl font-semibold shadow-sm active:scale-[0.99] transition-transform disabled:opacity-60"
         >
-          Start the dance
+          {isRecital ? "Start the recital" : "Start the dance"}
         </button>
       )}
     </div>

@@ -4,6 +4,7 @@ import type { ProgressData } from "@/actions/progress";
 import { COLLECTION } from "@/lib/collection";
 import { FigurineCat } from "@/components/cats";
 import { friendlyDate } from "@/lib/format";
+import { SeasonMap } from "@/components/season-map";
 
 export function CollectionView({ data }: { data: ProgressData }) {
   const nextCat = COLLECTION.find((c) => !data.earnedCats.includes(c.id));
@@ -44,6 +45,9 @@ export function CollectionView({ data }: { data: ProgressData }) {
         )}
         {!nextCat && <p className="text-sm mt-3">Every cat friend is here. Purr-fect! 🏆</p>}
       </div>
+
+      {/* The Season map: the long story, next to the cats */}
+      {data.season && <SeasonMap paths={data.season} />}
 
       {/* Friendly stats */}
       <div className="grid grid-cols-2 gap-3">

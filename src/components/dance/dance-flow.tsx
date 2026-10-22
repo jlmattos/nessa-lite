@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { StageData, Look, PerformancePlan } from "@/actions/dance";
@@ -13,6 +13,7 @@ import { ChooseDance } from "@/components/dance/choose-dance";
 import { Performance } from "@/components/dance/performance";
 import { Bow } from "@/components/dance/bow";
 import { ProgramLineView } from "@/components/program-line";
+import { PROGRAMS } from "@/lib/dance-content";
 
 type Step = "get_ready" | "choose" | "dance" | "bow";
 const STEPS: Step[] = ["get_ready", "choose", "dance", "bow"];
@@ -35,8 +36,23 @@ export function DanceFlow({ data }: { data: StageData }) {
   // Frozen at open: startDance revalidates the page mid-dance, and the strip must not change under her.
   const [dancedOnOpen] = useState(data.dancedToday);
   const recitalDay = data.programLine.isRecitalDay;
+  // Tonight's decorations, frozen at open: new ones arrive at the Bow (its one announcement) and stay.
+  const [decorations, setDecorations] = useState<string[]>(data.decorations);
+  const decorationsRef = useRef<string[]>(data.decorations);
+  const [newDecorations, setNewDecorations] = useState<string[]>([]);
 
   const onBow = useCallback((p: PerformancePlan) => {
+    if (p.recital) {
+      const recitalProgram = p.recital.program;
+      const added = PROGRAMS.filter(
+        (pr) => pr.program <= recitalProgram && !decorationsRef.current.includes(pr.decoration.key)
+      );
+      if (added.length > 0) {
+        decorationsRef.current = [...decorationsRef.current, ...added.map((pr) => pr.decoration.key)];
+        setDecorations(decorationsRef.current);
+        setNewDecorations(added.map((pr) => pr.decoration.name));
+      }
+    }
     setPlan(p);
     setDancedThisVisit(true);
     setStep("bow");
@@ -125,13 +141,15 @@ export function DanceFlow({ data }: { data: StageData }) {
         />
       )}
       {step === "dance" && (
-        <Performance data={data} look={look} danceId={danceId} replay={replay} onBow={onBow} />
+        <Performance data={data} look={look} danceId={danceId} replay={replay} decorations={decorations} onBow={onBow} />
       )}
       {step === "bow" && plan && (
         <Bow
           data={data}
           look={look}
           plan={plan}
+          decorations={decorations}
+          newDecorations={newDecorations}
           onDanceAgain={() => { setReplay(plan); setStep("dance"); }}
         />
       )}

@@ -71,15 +71,17 @@ version:
   If one changes, change the doc first, then the code.
 
 Status: Phase 0 (rig, five moves including Big spin, the Bow, three loops,
-the beat clock) is built and waits for Jose's iPad test at `/spike`. Phase
-1a is built: the §8 tables exist (migration applied to the live project),
-`/dance` is the four-step session (Get ready → Choose a dance → Dance with
-the Sparkle catch lane → Bow, "Done for today", "Open the curtains"), Today
-has the Program line, the ending card and the slipper/star states, and the
-Stage tab shows its dot. Not yet built (1b): playing recitals
-(`RECITALS_SHIPPED = false` keeps them from being marked performed),
-decorations beyond the two drawn, the Season map, the cat audience at the
-Bow, and bow showers. The editor, posters and rosettes are Phase 2.
+the beat clock) waits for Jose's iPad test at `/spike`. Phase 1a and 1b are
+built and deployed: the §8 tables exist (migration applied to the live
+project); `/dance` is the four-step session (Get ready → Choose a dance →
+Dance with the Sparkle catch lane → Bow, "Done for today", "Open the
+curtains"); recitals play as shows on one beat clock (title cards, the
+Program's distinct dances, a Finale, her own dance after a late one) with the
+cat friends in the front row; the Bow announces new decorations; Today has
+the Program line, the ending card and the slipper/recital-star states; the
+Stage tab shows its dot; the Friends tab has the Season map. Phase 2 is next:
+the dance editor with word-tile naming, posters, rosettes, and content
+through workout 15 (Sauté, Candy Waltz, Sugar Plum, 8 moves, garlands).
 
 ## Commands
 
@@ -111,7 +113,7 @@ renders (settings fall back to defaults), but every data query throws.
 - `src/lib/stage-data.ts` — server-only loader (not an action) that turns the
   tables into the `StageInput` the pure progress library works from.
 - `src/components/` — `today-view.tsx` (schedule strip, movement cards,
-  finish flow), `dance-stage.tsx`, `cats.tsx` (the ten figurine cats,
+  finish flow), `cats.tsx` (the ten figurine cats,
   unchanged from lift-lite), `routine-editor.tsx`, `collection-view.tsx`,
   `settings-card.tsx`, `bottom-nav.tsx`, `number-input.tsx`.
 - `src/components/dance/` — `pirouette.tsx` (the rig: named SVG groups moved
@@ -123,7 +125,8 @@ renders (settings fall back to defaults), but every data query throws.
   `spike-view.tsx` (the Phase 0 harness behind `/spike`; remove once Jose
   has tested on the iPad).
 - `src/components/schedule-strip.tsx` (shared by Today and the stage; also
-  `RecitalStar`) and `program-line.tsx` (the circles-and-star line).
+  `RecitalStar`), `program-line.tsx` (the circles-and-star line) and
+  `season-map.tsx` (the Friends tab's Program path).
 - `src/lib/` — `collection.ts` (cats by workout count), `sound.ts` (the one
   AudioContext, master gain + low-pass, chimes and notes), `music.ts` (the
   beat-clock sequencer and the song loops), `dance-player.ts`

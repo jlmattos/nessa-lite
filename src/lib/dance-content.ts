@@ -203,8 +203,8 @@ export const PROGRAMS: ProgramDef[] = [
 ];
 export const PROGRAM_BY_NUMBER = new Map(PROGRAMS.map((p) => [p.program, p]));
 export const WORKOUTS_PER_PROGRAM = 5;
-/** Phase 1b plays recitals. Until then a ready recital is never marked performed. */
-export const RECITALS_SHIPPED = false;
+/** Phase 1b plays recitals: the star, "Recital N today.", and the recital itself. */
+export const RECITALS_SHIPPED = true;
 export const PROGRAMS_PER_SEASON = 10;
 
 // ── Presets and naming words ─────────────────────────────────────────────────

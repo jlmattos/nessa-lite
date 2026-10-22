@@ -79,6 +79,16 @@ export function readyRecital(input: StageInput): number | null {
   return p > maxPerformed(input) ? p : null;
 }
 
+/**
+ * The ready recital is today's own (an on-time recital day, position 5 of a
+ * completed workout) rather than an older one played first on a later visit.
+ */
+export function recitalOnTime(input: StageInput): boolean {
+  const ready = readyRecital(input);
+  const n = countN(input);
+  return ready != null && input.todayCompleted && n % WORKOUTS_PER_PROGRAM === 0 && ready === n / WORKOUTS_PER_PROGRAM;
+}
+
 /** Decorations present on every stage: one per performed recital. */
 export function decorations(input: StageInput): ProgramDef[] {
   const top = maxPerformed(input);
@@ -110,6 +120,11 @@ export function slotCount(nMax: number): number {
 export function ambientSparkles(n: number, amount: "some" | "lots", weather = 0, lanes = 0): number {
   if (amount === "some") return 3;
   return Math.max(3, Math.min(6 + Math.floor(n / WORKOUTS_PER_PROGRAM), 12 - weather - lanes));
+}
+
+/** Every shipped, unlocked move once, in catalog order (the recital finale). */
+export function unlockedMoves(nMax: number): MoveKey[] {
+  return MOVES.filter((m) => m.shipped && m.unlockAt <= nMax && seasonVisible(m, nMax)).map((m) => m.key);
 }
 
 /** Pirouette's choice: every shipped, unlocked move once, in catalog order, up to the slot count. */
@@ -252,3 +267,31 @@ export const themeOf = (program: number) => PROGRAM_BY_NUMBER.get(program)?.them
 
 // Re-exported so callers that only need the string don't import the whole catalog.
 export { announce };
+
+// ── The Season map on the Friends tab (§4 item 6) ───────────────────────────
+
+export type SeasonSlot = {
+  program: number;
+  theme: string;
+  color: string;
+  /** done = a recital at or after it has been performed (its poster's place); now = the Program she is in. */
+  state: "done" | "now" | "later";
+};
+
+export type SeasonPath = { season: 1 | 2; slots: SeasonSlot[] };
+
+/** Season One always; Season Two's path appears once Recital 10 has been performed. */
+export function seasonMap(input: StageInput): SeasonPath[] {
+  const top = maxPerformed(input);
+  const current = programOf(Math.max(1, todayN(input)));
+  const path = (season: 1 | 2): SeasonPath => ({
+    season,
+    slots: PROGRAMS.filter((p) => (season === 1 ? p.program <= PROGRAMS_PER_SEASON : p.program > PROGRAMS_PER_SEASON)).map((p) => ({
+      program: p.program,
+      theme: p.theme,
+      color: p.color,
+      state: p.program <= top ? "done" : p.program === current ? "now" : "later",
+    })),
+  });
+  return top >= PROGRAMS_PER_SEASON ? [path(1), path(2)] : [path(1)];
+}

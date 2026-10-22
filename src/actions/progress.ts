@@ -3,6 +3,8 @@
 import { supabase } from "@/lib/db";
 import { todayLocal } from "@/lib/dates";
 import { computeEarnedCats, type CatId } from "@/lib/collection";
+import { loadStageInput } from "@/lib/stage-data";
+import { seasonMap, type SeasonPath } from "@/lib/dance-progress";
 
 export type ProgressData = {
   totalWorkouts: number;
@@ -10,6 +12,8 @@ export type ProgressData = {
   earnedCats: CatId[];
   /** Newest first. */
   recent: { id: string; performedOn: string; routineName: string | null; movementCount: number }[];
+  /** The Season map (null if the stage could not load; the rest of the page still shows). */
+  season: SeasonPath[] | null;
 };
 
 export async function getProgress(): Promise<ProgressData> {
@@ -33,7 +37,15 @@ export async function getProgress(): Promise<ProgressData> {
     }
   }
 
+  let season: SeasonPath[] | null = null;
+  try {
+    season = seasonMap((await loadStageInput(todayLocal())).input);
+  } catch {
+    season = null;
+  }
+
   return {
+    season,
     totalWorkouts: all.length,
     workoutsThisMonth: all.filter((w) => (w.performed_on as string) >= monthStart).length,
     earnedCats: computeEarnedCats(all.length),

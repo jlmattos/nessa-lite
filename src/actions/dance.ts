@@ -10,18 +10,28 @@ import {
   announce, isMoveKey, type MoveKey,
 } from "@/lib/dance-content";
 import {
-  countN, countNMax, programLine, readyRecital, decorations, unlockedKeys, slotCount, pirouettesChoice,
-  ambientSparkles, newSinceLastTime, todaysNewItem, todayRow as todayRowOf, programDances,
-  type ProgramLine,
+  countN, countNMax, programLine, readyRecital, recitalOnTime, decorations, unlockedKeys, slotCount, pirouettesChoice,
+  unlockedMoves, ambientSparkles, newSinceLastTime, todaysNewItem, todayRow as todayRowOf, programDances,
+  type ProgramLine, type StageInput,
 } from "@/lib/dance-progress";
 import { loadStageInput } from "@/lib/stage-data";
 
 export type Look = { costume: string; stage: string; music: string; sparkle: string };
 export type StageDance = { id: string | null; name: string; moves: MoveKey[]; presetKey: string | null };
+export type RecitalPlan = {
+  program: number;
+  /** Today is the recital day itself; false = an older recital played first on a later visit. */
+  onTime: boolean;
+  /** The Program's distinct dances, positions 1–4 in order. */
+  dances: { name: string; moves: MoveKey[] }[];
+  /** Every unlocked move once, in catalog order. */
+  finale: MoveKey[];
+};
+
 export type PerformancePlan = {
   dance: { name: string; moves: MoveKey[] };
-  /** A recital that plays first tonight (Phase 1b plays it; until then always null). */
-  recital: { program: number; dances: { name: string; moves: MoveKey[] }[] } | null;
+  /** The recital that plays first tonight, if one is ready. */
+  recital: RecitalPlan | null;
 };
 
 export type StageData = {
@@ -50,7 +60,7 @@ export type StageData = {
   /** Decoration keys present on every stage (one per performed recital). */
   decorations: string[];
   /** The recital that would play tonight, if one is ready. */
-  recital: { program: number; dances: { name: string; moves: MoveKey[] }[] } | null;
+  recital: RecitalPlan | null;
   /** "New today: Swan costume" for the banner's first line. */
   bannerToday: string | null;
   /** "New since last time: …" item announcements. */
@@ -62,6 +72,18 @@ export type StageData = {
 
 const DEFAULT_LOOK: Look = { costume: "classic", stage: "practice_room", music: "music_box", sparkle: "gold" };
 const PRESET_ORDER = Object.keys(PRESET_DANCES);
+
+function recitalPlan(input: StageInput): RecitalPlan | null {
+  const ready = readyRecital(input);
+  if (ready == null) return null;
+  const nMax = countNMax(input);
+  return {
+    program: ready,
+    onTime: recitalOnTime(input),
+    dances: programDances(input, ready).map((d) => ({ name: d.name, moves: d.moves ?? pirouettesChoice(nMax) })),
+    finale: unlockedMoves(nMax),
+  };
+}
 
 export async function getStageData(): Promise<StageData> {
   const today = todayLocal();
@@ -94,14 +116,7 @@ export async function getStageData(): Promise<StageData> {
   const lastDanced = [...input.rehearsals].filter((r) => r.dancedAt).sort((a, b) => (a.performedOn < b.performedOn ? 1 : -1))[0];
   const lastDanceId = lastDanced?.danceId && danceIds.has(lastDanced.danceId) ? lastDanced.danceId : null;
 
-  const ready = readyRecital(input);
-  const recital = ready != null
-    ? {
-        program: ready,
-        dances: programDances(input, ready).map((d) => ({ name: d.name, moves: d.moves ?? pirouettesChoice(nMax) })),
-      }
-    : null;
-
+  const recital = recitalPlan(input);
   const newToday = todaysNewItem(input);
 
   return {
@@ -200,14 +215,12 @@ export async function startDance(danceId: string | null): Promise<PerformancePla
   const update: Record<string, unknown> = { workout_id: workout.id, dance_id: id, dance_name: name, moves };
   if (!existing?.dancedAt) update.danced_at = new Date().toISOString();
 
-  let recital: PerformancePlan["recital"] = null;
-  const ready = readyRecital(input);
-  if (ready != null && existing?.recitalProgram == null) {
-    update.recital_program = ready;
-    recital = {
-      program: ready,
-      dances: programDances(input, ready).map((d) => ({ name: d.name, moves: d.moves ?? pirouettesChoice(nMax) })),
-    };
+  // The recital counts as performed the moment it starts (§5.4), and only once.
+  let recital: RecitalPlan | null = null;
+  const planned = recitalPlan(input);
+  if (planned && existing?.recitalProgram == null) {
+    update.recital_program = planned.program;
+    recital = planned;
   }
 
   const { error } = await supabase.from("rehearsals").upsert(update, { onConflict: "workout_id" });
