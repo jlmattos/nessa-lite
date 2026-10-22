@@ -25,7 +25,7 @@ screens will look familiar. Keep every key out of chat, commits and screenshots.
 5. On your Mac, create `~/nessa-lite/.env.local` (it is git-ignored) with:
 
    ```
-   NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxxxxxx.supabase.co
+   SUPABASE_URL=https://jfwsnjkdtdkggsafweyh.supabase.co
    SUPABASE_SECRET_KEY=sb_secret_...
    ```
 
@@ -40,7 +40,7 @@ screens will look familiar. Keep every key out of chat, commits and screenshots.
    the repo.
 3. Leave the framework as **Next.js** and the root directory as is.
 4. Open **Environment Variables** and add, for Production and Preview:
-   - `NEXT_PUBLIC_SUPABASE_URL` = the Project URL from step 1.4
+   - `SUPABASE_URL` = the Project URL from step 1.4 (`NEXT_PUBLIC_SUPABASE_URL` also works)
    - `SUPABASE_SECRET_KEY` = the secret key from step 1.4
    - `HOME_TZ` = `America/New_York` (optional; this is the default)
 5. Click **Deploy**. The first build takes a couple of minutes. You get a URL
@@ -61,7 +61,7 @@ credentials.
 1. On GitHub, open `jlmattos/nessa-lite` → **Settings** → **Secrets and
    variables** → **Actions** → **New repository secret**.
 2. Add `SUPABASE_URL` = the Project URL, and `SUPABASE_SECRET_KEY` = the secret
-   key. (Same values as Vercel; different variable name for the URL.)
+   key. (The same two names and values as Vercel.)
 3. Optional check: **Actions** tab → **Nightly backup** → **Run workflow**. A
    minute later `backups/latest.json` appears in the repo.
 

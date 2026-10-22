@@ -86,8 +86,8 @@ node scripts/backup.mjs       # dump every table to backups/ (needs Supabase env
 ```
 
 Env vars (`.env.local` locally, Vercel in prod; never committed):
-`NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SECRET_KEY`, optional `HOME_TZ`
-(default `America/New_York`). Cloud sessions have none unless added as
+`SUPABASE_URL` (or lift-lite's `NEXT_PUBLIC_SUPABASE_URL`; either is read),
+`SUPABASE_SECRET_KEY`, optional `HOME_TZ` (default `America/New_York`). Cloud sessions have none unless added as
 environment secrets; without them the app builds and the layout still
 renders (settings fall back to defaults), but every data query throws.
 

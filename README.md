@@ -14,7 +14,7 @@ The click-by-click version is in `docs/setup.md`.
 
 
 1. Create a Supabase project for nessa-lite and run `schema.sql` in its SQL editor.
-2. Create `.env.local` with `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SECRET_KEY`
+2. Create `.env.local` with `SUPABASE_URL` and `SUPABASE_SECRET_KEY`
    (optional `HOME_TZ`, default `America/New_York`).
 3. `npm install`, then `npm run dev -- --port 3002` and open http://localhost:3002.
 4. Deploy on Vercel with the same two environment variables.
