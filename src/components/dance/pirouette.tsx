@@ -1,21 +1,16 @@
 "use client";
 
 import type { CSSProperties, Ref } from "react";
+import { COSTUMES } from "@/lib/dance-content";
 
 /**
  * Pirouette, the ballerina cat — the rig. Same chibi proportions and palette
  * as the figurine cats, drawn as named groups so the player can move her:
  * legs, then the upper body (torso, arms, head), then sparkles. Moves are
  * CSS keyframes selected by `data-move` on the <svg>; see globals.css.
- * Costume colours are CSS custom properties, so a costume is a few overlay
- * shapes plus three colours.
+ * A costume is three colours (CSS custom properties on the root) plus a few
+ * overlay shapes, exactly like the cat outfits.
  */
-export type CostumeKey = "classic";
-
-const COSTUMES: Record<CostumeKey, { tutu: string; leotard: string; bow: string }> = {
-  classic: { tutu: "#f7c6d9", leotard: "#ec9fbd", bow: "#e26d5c" },
-};
-
 const CREAM = "#fff7ef";
 const INK = "#3d3436";
 const PINK = "#f2b3a6";
@@ -28,27 +23,39 @@ export function Pirouette({
   dancing = false,
   costume = "classic",
   ref,
+  onTap,
 }: {
   size?: number;
   /** Gentle sway and breathing sparkles while she is "on stage". */
   dancing?: boolean;
-  costume?: CostumeKey;
+  /** A costume key from the catalog; unknown keys fall back to Classic. */
+  costume?: string;
   /** The wrapper div: the player uses it to find the svg and force reflows. */
   ref?: Ref<HTMLDivElement>;
+  /** Tap on Pirouette herself (the zero-decision Twirl). */
+  onTap?: () => void;
 }) {
-  const c = COSTUMES[costume];
+  const def = COSTUMES.find((c) => c.key === costume) ?? COSTUMES[0];
+  const c = def.colors;
   const vars: CSSVars = { "--tutu": c.tutu, "--leotard": c.leotard, "--bow": c.bow };
 
   return (
-    <div ref={ref} className={`pir-wrap${dancing ? " pir-sway" : ""}`} style={{ width: size, height: size * 1.2 }}>
+    <div
+      ref={ref}
+      className={`pir-wrap${dancing ? " pir-sway" : ""}`}
+      style={{ width: size, height: size * 1.2 }}
+      onClick={onTap}
+      role={onTap ? "button" : undefined}
+      aria-label={onTap ? "Pirouette — tap for a twirl" : undefined}
+    >
       <svg
         className="pir"
         viewBox="0 0 100 120"
         width={size}
         height={size * 1.2}
         role="img"
-        aria-label="Pirouette the ballerina cat"
-        data-costume={costume}
+        aria-label={`Pirouette the ballerina cat in her ${def.name} costume`}
+        data-costume={def.key}
         style={vars}
       >
         {/* standing leg (pivots at its foot) */}
@@ -70,6 +77,7 @@ export function Pirouette({
             <path d="M34 78 Q50 72 66 78 L64 92 Q50 98 36 92 Z" style={{ fill: "var(--leotard)" }} />
             <ellipse cx="50" cy="90" rx="31" ry="9" style={{ fill: "var(--tutu)" }} />
             <ellipse cx="50" cy="88" rx="24" ry="5.5" style={{ fill: "var(--leotard)" }} opacity="0.45" />
+            <CostumeBody overlay={def.overlay} />
           </g>
           <g className="pir-arm-l">
             <path d="M36 74 Q24 68 12 60" stroke={CREAM} strokeWidth="9" strokeLinecap="round" fill="none" />
@@ -78,6 +86,7 @@ export function Pirouette({
             <path d="M64 74 Q76 68 88 60" stroke={CREAM} strokeWidth="9" strokeLinecap="round" fill="none" />
           </g>
           <g className="pir-head">
+            <CostumeBehindHead overlay={def.overlay} />
             <path d="M30 26 L36 8 L46 20 Z" fill={CREAM} />
             <path d="M70 26 L64 8 L54 20 Z" fill={CREAM} />
             <path d="M33 24 L37 12 L44 20 Z" fill={PINK} />
@@ -88,6 +97,7 @@ export function Pirouette({
             <path d="M50 9 L43 5 L43 13 Z" style={{ fill: "var(--bow)" }} />
             <path d="M50 9 L57 5 L57 13 Z" style={{ fill: "var(--bow)" }} />
             <circle cx="50" cy="9" r="1.8" style={{ fill: "var(--bow)" }} />
+            <CostumeHead overlay={def.overlay} />
             {/* face — happy closed eyes */}
             <path d="M36 38 Q41 33 46 38" stroke={INK} strokeWidth="3" strokeLinecap="round" fill="none" />
             <path d="M54 38 Q59 33 64 38" stroke={INK} strokeWidth="3" strokeLinecap="round" fill="none" />
@@ -112,4 +122,38 @@ export function Pirouette({
       </svg>
     </div>
   );
+}
+
+/* ── Costume overlays (GAME-DESIGN.md §5.1). Each is a few shapes; colours come from the root vars. ── */
+
+/** Drawn behind the head, before the ears: feathers, flames. */
+function CostumeBehindHead({ overlay }: { overlay: string | null }) {
+  switch (overlay) {
+    case "feathers": // Swan: three white feathers fanned behind the bun
+      return (
+        <g fill="#ffffff" stroke="#eee4dc" strokeWidth="0.8">
+          <ellipse cx="38" cy="12" rx="3.5" ry="9" transform="rotate(-28 38 12)" />
+          <ellipse cx="50" cy="6" rx="3.5" ry="9" />
+          <ellipse cx="62" cy="12" rx="3.5" ry="9" transform="rotate(28 62 12)" />
+        </g>
+      );
+    default:
+      return null;
+  }
+}
+
+/** Drawn on the head, after the bun and bow: tiaras, crowns, flakes. (Later costumes.) */
+function CostumeHead({ overlay }: { overlay: string | null }) {
+  switch (overlay) {
+    default:
+      return null;
+  }
+}
+
+/** Drawn on the tutu: stars, rainbow arcs. (Later costumes.) */
+function CostumeBody({ overlay }: { overlay: string | null }) {
+  switch (overlay) {
+    default:
+      return null;
+  }
 }

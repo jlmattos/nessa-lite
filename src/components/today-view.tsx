@@ -9,6 +9,8 @@ import {
 } from "@/actions/workouts";
 import { SetFlexToast, CatUnlock } from "@/components/cats";
 import { Pirouette } from "@/components/dance/pirouette";
+import { ScheduleStrip, RecitalStar, type StripItem } from "@/components/schedule-strip";
+import { ProgramLineView } from "@/components/program-line";
 import { targetLabel } from "@/lib/format";
 import { playDone, playFinish } from "@/lib/sound";
 
@@ -21,6 +23,9 @@ export function TodayView({ data }: { data: TodayData }) {
   const [confirmFinish, setConfirmFinish] = useState(false);
   const calm = data.settings.reducedMotion;
   const sound = data.settings.sound;
+  const stage = data.stage;
+  const recitalDay = stage?.programLine.isRecitalDay ?? false;
+  const danceWord = recitalDay ? "Recital" : "Dance";
 
   function run(fn: () => Promise<void>) {
     setError(null);
@@ -56,7 +61,7 @@ export function TodayView({ data }: { data: TodayData }) {
             <p className="text-xs uppercase tracking-wider text-muted font-semibold">Up next</p>
             <p className="text-2xl font-bold mt-1">{data.suggestedRoutine.name}</p>
             <p className="text-sm text-muted mt-1">
-              {data.suggestedRoutine.movementCount} movement{data.suggestedRoutine.movementCount !== 1 ? "s" : ""}, then a dance with Pirouette 🩰
+              {data.suggestedRoutine.movementCount} movement{data.suggestedRoutine.movementCount !== 1 ? "s" : ""}, then {recitalDay ? "a recital" : "a dance"} with Pirouette 🩰
             </p>
             <button
               onClick={() => run(() => startWorkout(data.suggestedRoutine!.id))}
@@ -90,6 +95,7 @@ export function TodayView({ data }: { data: TodayData }) {
             )}
           </Card>
         )}
+        {stage && <ProgramLineView line={stage.programLine} />}
       </div>
     );
   }
@@ -98,10 +104,45 @@ export function TodayView({ data }: { data: TodayData }) {
   const total = data.movements.length;
   const done = data.movements.filter((m) => m.completion).length;
   const completed = !!data.workout.completedAt;
+  const closed = !!stage?.closed;
   const currentIdx = data.movements.findIndex((m) => !m.completion);
   const current = currentIdx >= 0 ? data.movements[currentIdx] : null;
   const next = currentIdx >= 0 ? data.movements.slice(currentIdx + 1).find((m) => !m.completion) ?? null : null;
   const allChecked = total > 0 && done === total;
+
+  // The last step is the stage: outline until the workout is finished, ringed while she has not danced, dotted after.
+  const finalState = !completed ? "later" : stage?.waiting ? "now" : "done";
+  const items: StripItem[] = [
+    ...data.movements.map((m, i) => ({
+      key: m.movementId,
+      icon: m.icon,
+      label: String(i + 1),
+      state: (m.completion ? "done" : i === currentIdx && !completed ? "now" : "later") as StripItem["state"],
+      ariaLabel: `Step ${i + 1}: ${m.name}${m.completion ? ", done" : i === currentIdx && !completed ? ", now" : ""}`,
+    })),
+    {
+      key: "stage",
+      icon: recitalDay ? <RecitalStar /> : "🩰",
+      label: recitalDay ? "Recital" : "dance",
+      state: finalState,
+      final: true,
+      big: recitalDay,
+      keepIconWhenDone: true,
+      ariaLabel: recitalDay ? "Last: the recital with Pirouette" : "Last: a dance with Pirouette",
+    },
+  ];
+  const line = completed ? (
+    closed ? <>Today is done.</> : <>All done — Pirouette is ready on the stage.</>
+  ) : current ? (
+    <>
+      Now: <span className="font-semibold">{current.name}</span>
+      <span className="text-muted"> · then: {next ? next.name : danceWord}</span>
+    </>
+  ) : total === 0 ? (
+    <span className="text-muted">This routine has no movements yet — add some in the Routine tab.</span>
+  ) : (
+    <>Everything is checked — tap <span className="font-semibold">Finish</span> below.</>
+  );
 
   return (
     <div className="space-y-3">
@@ -109,68 +150,26 @@ export function TodayView({ data }: { data: TodayData }) {
       {!calm && <SetFlexToast signal={flexSignal} />}
       {error && <ErrorCard message={error} onDismiss={() => setError(null)} />}
 
-      {/* The schedule strip: every step, in order, with the dance at the end */}
-      <Card className="px-4 py-3">
-        <p className="text-xs uppercase tracking-wider text-muted font-semibold">Today’s plan</p>
-        <div className="flex items-center gap-1.5 mt-2 overflow-x-auto pb-1">
-          {data.movements.map((m, i) => {
-            const state = m.completion ? "done" : i === currentIdx && !completed ? "now" : "later";
-            return (
-              <div
-                key={m.movementId}
-                className={`flex flex-col items-center w-14 shrink-0 rounded-xl py-1.5 ${
-                  state === "now" ? "bg-accent-soft ring-2 ring-accent" : state === "done" ? "bg-success-soft" : "bg-background"
-                }`}
-                aria-label={`Step ${i + 1}: ${m.name}${state === "done" ? ", done" : state === "now" ? ", now" : ""}`}
-              >
-                <span className="text-2xl leading-none" aria-hidden>{state === "done" ? "✅" : m.icon}</span>
-                <span className="text-[10px] text-muted mt-1">{i + 1}</span>
-              </div>
-            );
-          })}
-          <span className="text-muted px-0.5" aria-hidden>→</span>
-          <div
-            className={`flex flex-col items-center w-14 shrink-0 rounded-xl py-1.5 ${
-              completed ? "bg-accent-soft ring-2 ring-accent" : "bg-background"
-            }`}
-            aria-label="Last: dance with Pirouette"
-          >
-            <span className="text-2xl leading-none" aria-hidden>🩰</span>
-            <span className="text-[10px] text-muted mt-1">dance</span>
-          </div>
-        </div>
-        <p className="text-sm mt-2">
-          {completed ? (
-            <>All done — Pirouette is ready on the stage.</>
-          ) : current ? (
-            <>
-              Now: <span className="font-semibold">{current.name}</span>
-              {next && <span className="text-muted"> · then {next.name}</span>}
-            </>
-          ) : total === 0 ? (
-            <span className="text-muted">This routine has no movements yet — add some in the Routine tab.</span>
-          ) : (
-            <>Everything is checked — tap <span className="font-semibold">Finish</span> below.</>
-          )}
-        </p>
-      </Card>
+      <ScheduleStrip title="Today’s plan" items={items} line={line} />
+      {stage && <ProgramLineView line={stage.programLine} />}
 
       {completed && (
         <Card className="p-4 border-success/50 bg-success-soft flex items-center gap-4">
-          <div className={calm ? "shrink-0" : "shrink-0 animate-lite-hop"}>
-            <Pirouette size={56} dancing={!calm} />
+          <div className={calm || closed ? "shrink-0" : "shrink-0 animate-lite-hop"}>
+            <Pirouette size={56} costume={stage?.costume ?? "classic"} dancing={!calm && !closed} />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-success text-lg">Workout done. 🎉</p>
-            <p className="text-xs text-muted mt-0.5">
-              {done} movement{done !== 1 ? "s" : ""} finished. Pirouette is ready to dance.
-            </p>
-            <Link
-              href="/dance"
-              className="inline-block mt-2 rounded-xl bg-accent text-white text-sm font-semibold px-4 py-2.5"
-            >
-              Go to the stage →
-            </Link>
+            <p className="font-semibold text-success text-lg">{closed ? "Today is done." : "Workout done."}</p>
+            {!closed && stage?.newToday && <p className="text-xs font-medium mt-0.5">{stage.newToday}</p>}
+            {!closed && (
+              <Link
+                href="/dance"
+                className="inline-block mt-2 rounded-xl bg-accent text-white text-sm font-semibold px-4 py-2.5"
+              >
+                Go to the stage →
+              </Link>
+            )}
+            {closed && <p className="text-xs text-muted mt-0.5">The stage is closed for today. See you next time. 🐾</p>}
           </div>
           <button
             onClick={() => run(() => reopenWorkout(data.workout!.id))}

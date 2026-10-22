@@ -70,11 +70,16 @@ version:
 - **§10 records Jose's decisions** on the twenty open questions (22 Oct 2026).
   If one changes, change the doc first, then the code.
 
-Status: Phase 0 is built (the rig, five moves including Big spin, the Bow,
-two loops, the beat clock) and waits for Jose's iPad test at `/spike`.
-`/dance` still shows only a Twirl button, and none of the §8 tables exist
-yet. The copy already uses the doc's names ("Stage" tab, "Go to the stage",
-"Finish today's workout?").
+Status: Phase 0 (rig, five moves including Big spin, the Bow, three loops,
+the beat clock) is built and waits for Jose's iPad test at `/spike`. Phase
+1a is built: the §8 tables exist (migration applied to the live project),
+`/dance` is the four-step session (Get ready → Choose a dance → Dance with
+the Sparkle catch lane → Bow, "Done for today", "Open the curtains"), Today
+has the Program line, the ending card and the slipper/star states, and the
+Stage tab shows its dot. Not yet built (1b): playing recitals
+(`RECITALS_SHIPPED = false` keeps them from being marked performed),
+decorations beyond the two drawn, the Season map, the cat audience at the
+Bow, and bow showers. The editor, posters and rosettes are Phase 2.
 
 ## Commands
 
@@ -98,27 +103,38 @@ renders (settings fall back to defaults), but every data query throws.
   `/routine` the editor Jose uses. `layout.tsx` reads settings and sets
   `data-reduced-motion` on `<html>`.
 - `src/actions/*.ts` — server actions (`"use server"`), the only place the
-  database is touched. `workouts.ts` builds the Today screen and handles
-  start / done / undo / finish; `routine.ts` is the editor; `progress.ts`
-  feeds the collection page; `dance.ts` says whether today is unlocked;
-  `settings.ts` never throws.
+  database is touched. `workouts.ts` builds the Today screen (including the
+  stage summary) and handles start / done / undo / finish (Finish bumps the
+  high-water mark); `routine.ts` is the editor; `progress.ts` feeds the
+  collection page; `dance.ts` is the stage (`getStageData`, `setLook`,
+  `startDance`, `closeCurtains`, `openCurtains`); `settings.ts` never throws.
+- `src/lib/stage-data.ts` — server-only loader (not an action) that turns the
+  tables into the `StageInput` the pure progress library works from.
 - `src/components/` — `today-view.tsx` (schedule strip, movement cards,
   finish flow), `dance-stage.tsx`, `cats.tsx` (the ten figurine cats,
   unchanged from lift-lite), `routine-editor.tsx`, `collection-view.tsx`,
   `settings-card.tsx`, `bottom-nav.tsx`, `number-input.tsx`.
 - `src/components/dance/` — `pirouette.tsx` (the rig: named SVG groups moved
-  by `data-move`, costume colours as CSS variables) and `spike-view.tsx` (the
-  Phase 0 test harness behind `/spike`, off the nav, no database needed).
-  Remove the spike once Phase 1a replaces the Twirl button.
+  by `data-move`, costume colours as CSS variables, overlays per costume),
+  `dance-flow.tsx` (the four-step session and its strip), `get-ready.tsx`
+  (look pickers, one row per screen), `choose-dance.tsx` (+ `MoveStrip`),
+  `performance.tsx` (curtains, ambient sparkles, Sparkle catch lane, Stop),
+  `bow.tsx`, `stage.tsx` (backdrops, decorations, curtains), and
+  `spike-view.tsx` (the Phase 0 harness behind `/spike`; remove once Jose
+  has tested on the iPad).
+- `src/components/schedule-strip.tsx` (shared by Today and the stage; also
+  `RecitalStar`) and `program-line.tsx` (the circles-and-star line).
 - `src/lib/` — `collection.ts` (cats by workout count), `sound.ts` (the one
   AudioContext, master gain + low-pass, chimes and notes), `music.ts` (the
   beat-clock sequencer and the song loops), `dance-player.ts`
   (`useDancePlayer`: drives the rig from the clock, Bow at the end, stops on
   hide/unmount), `dance-content.ts` (the stage catalog: moves, presets),
-  `settings.ts` (type + defaults), `dates.ts` (`todayLocal`), `format.ts`,
-  `db.ts` (lazy Supabase client, server-only).
-- `schema.sql` — run by hand in the Supabase SQL editor. No migration
-  runner; add numbered `migration-000N-*.sql` files for schema changes.
+  `dance-progress.ts` (pure derivations: N, Programs, recitals, unlocks,
+  the Program line, the new-since banner), `settings.ts` (type + defaults),
+  `dates.ts` (`todayLocal`), `format.ts`, `db.ts` (lazy Supabase client).
+- `schema.sql` + `migration-0001-dance.sql` — both applied to the live
+  project. No migration runner; add numbered `migration-000N-*.sql` files for
+  schema changes and apply them by hand (or through the Supabase connector).
 - `scripts/backup.mjs` + `.github/workflows/backup.yml` — nightly snapshot to
   `backups/latest.json`. The schedule is on; the job skips cleanly until the
   repository secrets exist (Jose wants backups).

@@ -3,6 +3,8 @@ import { Geist } from "next/font/google";
 import "./globals.css";
 import { BottomNav } from "@/components/bottom-nav";
 import { getSettings } from "@/actions/settings";
+import { getStageWaiting } from "@/lib/stage-data";
+import { todayLocal } from "@/lib/dates";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,7 +29,7 @@ export const dynamic = "force-dynamic";
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   // Calm mode is applied at the root so every animation class can honour it
   // from CSS alone (see globals.css). getSettings never throws.
-  const settings = await getSettings();
+  const [settings, stageDot] = await Promise.all([getSettings(), getStageWaiting(todayLocal())]);
   return (
     <html
       lang="en"
@@ -36,7 +38,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col">
         <main className="flex-1 pb-28">{children}</main>
-        <BottomNav />
+        <BottomNav stageDot={stageDot} />
       </body>
     </html>
   );

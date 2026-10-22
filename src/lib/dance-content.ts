@@ -28,6 +28,8 @@ export type MoveKey =
 export type MoveDef = CatalogItem & {
   kind: "move";
   key: MoveKey;
+  /** The picture on the move tile and in the move strip. */
+  icon: string;
   /** Length in beats at the song's tempo. */
   beats: number;
   /** The move's note (MIDI). Pentatonic, so any sequence is a consonant tune. */
@@ -36,21 +38,21 @@ export type MoveDef = CatalogItem & {
   midi2?: number;
 };
 
-const move = (key: MoveKey, name: string, beats: number, midi: number, unlockAt: number, shipped: boolean, extra: Partial<MoveDef> = {}): MoveDef => ({
-  key, name, kind: "move", kindWord: "a new move", beats, midi, unlockAt, season: unlockAt > 50 ? 2 : 1, shipped, ...extra,
+const move = (key: MoveKey, name: string, icon: string, beats: number, midi: number, unlockAt: number, shipped: boolean, extra: Partial<MoveDef> = {}): MoveDef => ({
+  key, name, icon, kind: "move", kindWord: "a new move", beats, midi, unlockAt, season: unlockAt > 50 ? 2 : 1, shipped, ...extra,
 });
 
 export const MOVES: MoveDef[] = [
-  move("plie", "Plié", 2, 72, 1, true),              // C5
-  move("reach", "Reach", 2, 76, 1, true),            // E5
-  move("twirl", "Twirl", 4, 79, 1, true),            // G5
-  move("arabesque", "Arabesque", 2, 81, 1, true),    // A5
-  move("saute", "Sauté", 2, 84, 9, false),           // C6
-  move("curtsy", "Curtsy", 2, 74, 27, false),        // D5
-  move("glide", "Glide", 4, 76, 33, false),          // E5
-  move("grand_spin", "Big spin", 4, 79, 41, true, { midi2: 84 }), // G5 + C6 — rig built in Phase 0
-  move("wave_arms", "Wave arms", 2, 81, 64, false),
-  move("final_pose", "Final pose", 4, 84, 84, false),
+  move("plie", "Plié", "🧎", 2, 72, 1, true),              // C5
+  move("reach", "Reach", "🙌", 2, 76, 1, true),            // E5
+  move("twirl", "Twirl", "🌀", 4, 79, 1, true),            // G5
+  move("arabesque", "Arabesque", "🦵", 2, 81, 1, true),    // A5
+  move("saute", "Sauté", "⬆️", 2, 84, 9, false),           // C6
+  move("curtsy", "Curtsy", "🙇", 2, 74, 27, false),        // D5
+  move("glide", "Glide", "↔️", 4, 76, 33, false),          // E5
+  move("grand_spin", "Big spin", "💫", 4, 79, 41, true, { midi2: 84 }), // G5 + C6 — rig built in Phase 0
+  move("wave_arms", "Wave arms", "👋", 2, 81, 64, false),
+  move("final_pose", "Final pose", "✨", 4, 84, 84, false),
 ];
 export const MOVE_BY_KEY = Object.fromEntries(MOVES.map((m) => [m.key, m])) as Record<MoveKey, MoveDef>;
 export const isMoveKey = (k: string): k is MoveKey => k in MOVE_BY_KEY;
@@ -201,6 +203,8 @@ export const PROGRAMS: ProgramDef[] = [
 ];
 export const PROGRAM_BY_NUMBER = new Map(PROGRAMS.map((p) => [p.program, p]));
 export const WORKOUTS_PER_PROGRAM = 5;
+/** Phase 1b plays recitals. Until then a ready recital is never marked performed. */
+export const RECITALS_SHIPPED = false;
 export const PROGRAMS_PER_SEASON = 10;
 
 // ── Presets and naming words ─────────────────────────────────────────────────

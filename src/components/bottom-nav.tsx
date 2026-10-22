@@ -11,7 +11,8 @@ const tabs = [
   { href: "/routine", label: "Routine", emoji: "🗓️" },
 ];
 
-export function BottomNav() {
+/** stageDot: today's workout is done and she has not danced yet — a small gold dot on the Stage tab. */
+export function BottomNav({ stageDot = false }: { stageDot?: boolean }) {
   const pathname = usePathname();
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-line bg-surface/90 backdrop-blur-lg">
@@ -27,7 +28,12 @@ export function BottomNav() {
                 active ? "text-accent-deep" : "text-muted"
               }`}
             >
-              <span className="text-2xl leading-none" aria-hidden>{t.emoji}</span>
+              <span className="relative text-2xl leading-none" aria-hidden>
+                {t.emoji}
+                {t.href === "/dance" && stageDot && (
+                  <span className="absolute -top-0.5 -right-1.5 w-1.5 h-1.5 rounded-full bg-gold" />
+                )}
+              </span>
               <span>{t.label}</span>
             </Link>
           );

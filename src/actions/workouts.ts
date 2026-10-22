@@ -4,8 +4,11 @@ import { supabase } from "@/lib/db";
 import { todayLocal } from "@/lib/dates";
 import { revalidatePath } from "next/cache";
 import { computeEarnedCats, type CatId } from "@/lib/collection";
-import { getSettings } from "@/actions/settings";
+import { getSettings, bumpHighWater } from "@/actions/settings";
 import type { Settings } from "@/lib/settings";
+import { loadStageInput } from "@/lib/stage-data";
+import { programLine, todaysNewItem, stageWaiting, todayRow, type ProgramLine } from "@/lib/dance-progress";
+import { announce } from "@/lib/dance-content";
 
 export type TodayMovement = {
   movementId: string;
@@ -17,6 +20,19 @@ export type TodayMovement = {
   targetSecs: number | null;
   /** Set once she tapped Done on it today. */
   completion: { id: string; reps: number | null; secs: number | null } | null;
+};
+
+/** What Today shows about the stage (GAME-DESIGN.md §3.0, §3.4, §3.10). Null if the stage tables are missing. */
+export type TodayStage = {
+  programLine: ProgramLine;
+  /** "New today: Swan costume" for the ending card. */
+  newToday: string | null;
+  /** Workout done and she has not danced yet: the slipper is ringed, the tab has its dot. */
+  waiting: boolean;
+  /** "Done for today" has closed the stage. */
+  closed: boolean;
+  /** Her current costume, for the ending and done cards. */
+  costume: string;
 };
 
 export type TodayData = {
@@ -31,6 +47,7 @@ export type TodayData = {
   totalWorkouts: number;
   earnedCats: CatId[];
   settings: Settings;
+  stage: TodayStage | null;
 };
 
 function refreshAll() {
@@ -110,6 +127,23 @@ export async function getTodayData(): Promise<TodayData> {
     });
   }
 
+  let stage: TodayStage | null = null;
+  try {
+    const s = await loadStageInput(today);
+    const row = todayRow(s.input);
+    const latest = [...s.input.rehearsals].sort((a, b) => (a.performedOn < b.performedOn ? 1 : -1))[0];
+    const newItem = todaysNewItem(s.input);
+    stage = {
+      programLine: programLine(s.input),
+      newToday: newItem ? `New today: ${announce(newItem)}` : null,
+      waiting: stageWaiting(s.input) && !s.workout?.stageClosedAt,
+      closed: !!s.workout?.stageClosedAt,
+      costume: row?.costume ?? latest?.costume ?? "classic",
+    };
+  } catch {
+    stage = null;
+  }
+
   let suggestedRoutine: TodayData["suggestedRoutine"] = null;
   if (suggested) {
     const { count } = await supabase
@@ -135,6 +169,7 @@ export async function getTodayData(): Promise<TodayData> {
     totalWorkouts: totalCompleted ?? 0,
     earnedCats: computeEarnedCats(totalCompleted ?? 0),
     settings,
+    stage,
   };
 }
 
@@ -169,18 +204,27 @@ export async function undoCompletion(completionId: string) {
   revalidatePath("/");
 }
 
-/** The clear ending: marks the day complete and unlocks the dance. */
+/** The clear ending: marks the day complete, unlocks the dance, and raises the high-water mark. */
 export async function finishWorkout(workoutId: string) {
   const { error } = await supabase
     .from("workouts")
     .update({ completed_at: new Date().toISOString() })
     .eq("id", workoutId);
   if (error) throw new Error(error.message);
+  const { count } = await supabase
+    .from("workouts").select("id", { count: "exact", head: true }).not("completed_at", "is", null);
+  try {
+    await bumpHighWater(count ?? 0);
+  } catch {
+    // The stage columns may not exist yet; the day is still complete.
+  }
   refreshAll();
 }
 
+/** Reopening the workout also reopens the stage (GAME-DESIGN.md §3.10). */
 export async function reopenWorkout(workoutId: string) {
-  const { error } = await supabase.from("workouts").update({ completed_at: null }).eq("id", workoutId);
+  const { error } = await supabase
+    .from("workouts").update({ completed_at: null, stage_closed_at: null }).eq("id", workoutId);
   if (error) throw new Error(error.message);
   refreshAll();
 }
