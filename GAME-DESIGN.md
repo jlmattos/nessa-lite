@@ -447,7 +447,7 @@ The twenty open questions were answered on 22 October 2026, and every section ab
 | 4 | Numbers | None shown. `sparkle_count` stays off. | §7 |
 | 5 | Locked tiles | Visible in place, with the workout number once the item has shipped. | §3.6, §5.1 |
 | 6 | Get ready layout | One row per screen. | §3.6 |
-| 7 | Dance names | Word tiles first; "Dance K" when she skips them. The twelve words (Moon · Star · Garden · Snow · Rose · Sunny / Waltz · Ballet · Ribbon · Dream · Song · Steps) are still to confirm with her. | §5.2 |
+| 7 | Dance names | Word tiles first; "Dance K" when she skips them. The twelve words (Moon · Star · Garden · Snow · Rose · Sunny / Waltz · Ballet · Ribbon · Dream · Song · Steps) confirmed by Jose 22 Oct 2026. | §5.2 |
 | 8 | After "Done for today" | "Open the curtains" stays for free play. | §3.10 |
 | 9 | Rest days | The stage stays closed; nothing is watchable without a finished workout. | §3.0, §3.11 |
 | 10 | Recital length | The full recital, finale and bow showers included. | §5.4 |
@@ -456,7 +456,7 @@ The twenty open questions were answered on 22 October 2026, and every section ab
 | 13 | Calm mode | Not needed for her. Kept only as a kill switch; the per-move static poses are not built. | §7 |
 | 14 | Darker backdrops | Keep them. | §5.1 |
 | 15 | Program line on Today | Keep both rows. | §3.0 |
-| 16 | Starting count | **Amended after the consistency review, Jose to confirm.** Counting the stage from a start date while the cats count everything would put cats and unlocks on the same days, breaking "one new thing per workout". So the stage counts every completed workout, exactly like the cats, and `stage_start_on` is gone. To keep her first stage visit to one new thing, hand her the app once Phase 1a is live; if she has finished workouts before then, her first visit lists what they earned under "New since last time". | §2, §4.1, §8, §9 |
+| 16 | Starting count | **Amended after the consistency review; Jose confirmed 22 Oct 2026.** Counting the stage from a start date while the cats count everything would put cats and unlocks on the same days, breaking "one new thing per workout". So the stage counts every completed workout, exactly like the cats, and `stage_start_on` is gone. To keep her first stage visit to one new thing, hand her the app once Phase 1a is live; if she has finished workouts before then, her first visit lists what they earned under "New since last time". | §2, §4.1, §8, §9 |
 | 17 | Recital day | Marked big: the Dance step becomes a larger gold star labelled "Recital" on both strips, and Today reads "Recital 1 today." | §2, §3.0, §3.5, §3.7, §5.4 |
 | 18 | Backups | Wanted. The nightly schedule is on; the job skips cleanly until the repository secrets exist. `dances` and `rehearsals` join the backup table list in Phase 1a. | §9, `.github/workflows/backup.yml` |
 | 19 | Sparkle catch | On from the first evening (`sparkle_taps` default true), so the lane ships in Phase 1a. Jose shows her once. The ring stays still until her first catch. The second lane unlocks at 34 as an announced item. | §4.1, §5.3, §7, §8, §9 |
@@ -464,4 +464,4 @@ The twenty open questions were answered on 22 October 2026, and every section ab
 
 Still to confirm, with her, on the real iPad during Phase 0: whether the big spins (12) are comfortable to watch, and whether the four step names (1) are the words she would use.
 
-Added after the consistency review (22 October 2026), for Jose to confirm: the amendment to #16 above; the twelve naming words in #7; four Program themes sharing a name with one item in their own Program (Sugar Plum, Starlight, Grand Theater, Rainbow), kept with the kind-word rule rather than renamed; and the Season Two theme names Dawn, Lantern, Meadow, Harvest, Frost, Comet, Ember, Blossom, Velvet, Encore.
+Added after the consistency review and confirmed by Jose the same day (22 October 2026): the amendment to #16 above; the twelve naming words in #7; four Program themes sharing a name with one item in their own Program (Sugar Plum, Starlight, Grand Theater, Rainbow), kept with the kind-word rule rather than renamed; and the Season Two theme names Dawn, Lantern, Meadow, Harvest, Frost, Comet, Ember, Blossom, Velvet, Encore.
