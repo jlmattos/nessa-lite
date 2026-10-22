@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Lift Lite mascot: a happy cat pressing a barbell overhead -->
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="35%" r="80%">
+      <stop offset="0%" stop-color="#e8796a"/>
+      <stop offset="100%" stop-color="#d95f4e"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+
+  <!-- arms reaching up to the bar -->
+  <path d="M 180 350 Q 148 240 146 140" stroke="#fff7ef" stroke-width="34" stroke-linecap="round" fill="none"/>
+  <path d="M 332 350 Q 364 240 366 140" stroke="#fff7ef" stroke-width="34" stroke-linecap="round" fill="none"/>
+
+  <!-- barbell -->
+  <rect x="66" y="112" width="380" height="18" rx="9" fill="#3d3436"/>
+  <rect x="84" y="74" width="38" height="94" rx="12" fill="#3d3436"/>
+  <rect x="390" y="74" width="38" height="94" rx="12" fill="#3d3436"/>
+  <rect x="132" y="90" width="20" height="62" rx="8" fill="#584d50"/>
+  <rect x="360" y="90" width="20" height="62" rx="8" fill="#584d50"/>
+
+  <!-- paws gripping the bar -->
+  <circle cx="146" cy="121" r="22" fill="#fff7ef"/>
+  <circle cx="366" cy="121" r="22" fill="#fff7ef"/>
+
+  <!-- tail -->
+  <path d="M 356 478 Q 424 468 424 410 Q 424 378 396 380" stroke="#fff7ef" stroke-width="26" stroke-linecap="round" fill="none"/>
+
+  <!-- body -->
+  <ellipse cx="256" cy="432" rx="108" ry="98" fill="#fff7ef"/>
+
+  <!-- ears (behind head edge) -->
+  <path d="M 184 192 L 202 116 L 248 162 Z" fill="#fff7ef"/>
+  <path d="M 328 192 L 310 116 L 264 162 Z" fill="#fff7ef"/>
+  <path d="M 196 180 L 206 136 L 234 164 Z" fill="#f2b3a6"/>
+  <path d="M 316 180 L 306 136 L 278 164 Z" fill="#f2b3a6"/>
+
+  <!-- head -->
+  <circle cx="256" cy="252" r="96" fill="#fff7ef"/>
+
+  <!-- sweatband -->
+  <path d="M 172 196 Q 256 168 340 196 L 336 220 Q 256 194 176 220 Z" fill="#c94f3e"/>
+
+  <!-- happy closed eyes -->
+  <path d="M 206 252 Q 221 238 236 252" stroke="#3d3436" stroke-width="10" stroke-linecap="round" fill="none"/>
+  <path d="M 276 252 Q 291 238 306 252" stroke="#3d3436" stroke-width="10" stroke-linecap="round" fill="none"/>
+
+  <!-- blush -->
+  <circle cx="192" cy="284" r="14" fill="#f2b3a6" opacity="0.65"/>
+  <circle cx="320" cy="284" r="14" fill="#f2b3a6" opacity="0.65"/>
+
+  <!-- nose + mouth -->
+  <path d="M 246 274 L 266 274 L 256 288 Z" fill="#d9705f"/>
+  <path d="M 236 296 Q 246 306 256 292 Q 266 306 276 296" stroke="#3d3436" stroke-width="8" stroke-linecap="round" fill="none"/>
+
+  <!-- whiskers -->
+  <g stroke="#3d3436" stroke-width="5" stroke-linecap="round">
+    <path d="M 174 268 L 128 258"/>
+    <path d="M 174 282 L 124 282"/>
+    <path d="M 174 296 L 130 306"/>
+    <path d="M 338 268 L 384 258"/>
+    <path d="M 338 282 L 388 282"/>
+    <path d="M 338 296 L 382 306"/>
+  </g>
+</svg>

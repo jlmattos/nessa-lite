@@ -1,0 +1,38 @@
+name: Nightly backup
+
+# Dumps the Supabase database to backups/latest.json and commits it, the same
+# way lift-lite does. Git history then keeps every night's snapshot.
+#
+# OFF until you want it: the schedule is commented out so the workflow doesn't
+# fail nightly before the secrets exist. To turn it on, add the two repository
+# secrets (Settings → Secrets and variables → Actions): SUPABASE_URL and
+# SUPABASE_SECRET_KEY, then uncomment the schedule block.
+
+on:
+  # schedule:
+  #   - cron: "0 9 * * *" # ~5am ET daily
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Dump database
+        run: node scripts/backup.mjs --latest
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      - name: Commit snapshot
+        run: |
+          git config user.name "backup-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add backups/latest.json
+          git diff --cached --quiet || git commit -m "Nightly backup"
+          git push
