@@ -7,6 +7,11 @@
  * so the same move can repeat back to back), sets `--beat` from the tempo,
  * plays each move's note as it starts, adds the Bow after the last move, and
  * stops cleanly on unmount or when the tab is hidden.
+ *
+ * Optional callbacks: onMoveStart(index) fires synchronously on the beat a move
+ * starts (the Sparkle catch lane times its window from it); onHidden fires when
+ * the page is hidden mid-dance, before the stop (the stage goes to the Bow);
+ * onStall fires when audio never started (the stage resets its curtains).
  */
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { BOW_BEATS, BOW_CHORD, MOVE_BY_KEY, type MoveKey } from "@/lib/dance-content";
@@ -15,14 +20,28 @@ import { getAudioContext, masterOut, playChord, playNote } from "@/lib/sound";
 
 export type PlayerState = "idle" | "playing" | "bowing" | "done";
 
+export type PlayerOptions = {
+  sound: boolean;
+  onMoveStart?: (index: number) => void;
+  onHidden?: () => void;
+  onStall?: () => void;
+};
+
 function noteFor(key: MoveKey, at?: number, out?: AudioNode) {
   const m = MOVE_BY_KEY[key];
   playNote(m.midi, { at, out });
   if (m.midi2 != null) playNote(m.midi2, { at, out, peak: 0.28 });
 }
 
-export function useDancePlayer(rigRef: RefObject<HTMLDivElement | null>, opts: { sound: boolean }) {
-  const [state, setState] = useState<PlayerState>("idle");
+export function useDancePlayer(rigRef: RefObject<HTMLDivElement | null>, opts: PlayerOptions) {
+  const [state, setStateRaw] = useState<PlayerState>("idle");
+  const stateRef = useRef<PlayerState>("idle");
+  const setState = useCallback((s: PlayerState) => {
+    stateRef.current = s;
+    setStateRaw(s);
+  }, []);
+  const optsRef = useRef(opts);
+  optsRef.current = opts;
   const [currentIndex, setCurrentIndex] = useState<number | null>(null);
   const unsubRef = useRef<(() => void) | null>(null);
   const stallRef = useRef<(() => void) | null>(null);
@@ -76,7 +95,7 @@ export function useDancePlayer(rigRef: RefObject<HTMLDivElement | null>, opts: {
       setCurrentIndex(null);
       setState("idle");
     },
-    [setMove, releaseOut]
+    [setMove, releaseOut, setState]
   );
 
   /** One move, right now, with its note — the Twirl button, editor previews. */
@@ -112,7 +131,10 @@ export function useDancePlayer(rigRef: RefObject<HTMLDivElement | null>, opts: {
         outRef.current = out;
       }
       // If the context never starts running (no gesture, interrupted), come back to idle.
-      stallRef.current = sequencer.onStall(() => stop(0));
+      stallRef.current = sequencer.onStall(() => {
+        stop(0);
+        optsRef.current.onStall?.();
+      });
 
       const starts: number[] = [];
       let b = 0;
@@ -131,6 +153,7 @@ export function useDancePlayer(rigRef: RefObject<HTMLDivElement | null>, opts: {
           setCurrentIndex(i);
           setMove(moves[i]);
           if (soundRef.current) noteFor(moves[i], time, out); // on the audio clock, with the music
+          optsRef.current.onMoveStart?.(i);
           return;
         }
         if (beat === bowAt) {
@@ -153,13 +176,16 @@ export function useDancePlayer(rigRef: RefObject<HTMLDivElement | null>, opts: {
       });
       return true;
     },
-    [stop, setMove, setTempo, releaseOut]
+    [stop, setMove, setTempo, releaseOut, setState]
   );
 
   // The tab going to the background stops everything; so does unmounting.
   useEffect(() => {
     const onVisibility = () => {
-      if (document.visibilityState === "hidden") stop(0.2);
+      if (document.visibilityState !== "hidden") return;
+      const midDance = stateRef.current === "playing" || stateRef.current === "bowing";
+      stop(0.2);
+      if (midDance) optsRef.current.onHidden?.();
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => {

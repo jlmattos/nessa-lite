@@ -2,7 +2,7 @@
 
 import type { StageData, StageDance } from "@/actions/dance";
 import { Pirouette } from "@/components/dance/pirouette";
-import { MOVE_BY_KEY, FEATURES, type MoveKey } from "@/lib/dance-content";
+import { MOVE_BY_KEY, FEATURES, PIROUETTES_CHOICE_NAME, type MoveKey } from "@/lib/dance-content";
 
 /**
  * Step 2 (GAME-DESIGN.md §3.7). A fixed 2×2 grid that never reorders:
@@ -26,8 +26,8 @@ export function ChooseDance({
 }) {
   const selected: { name: string; moves: MoveKey[] } =
     selectedId == null
-      ? { name: "Pirouette’s choice", moves: data.pirouettesChoice }
-      : data.dances.find((d) => d.id === selectedId) ?? { name: "Pirouette’s choice", moves: data.pirouettesChoice };
+      ? { name: PIROUETTES_CHOICE_NAME, moves: data.pirouettesChoice }
+      : data.dances.find((d) => d.id === selectedId) ?? { name: PIROUETTES_CHOICE_NAME, moves: data.pirouettesChoice };
   const presets = data.dances.filter((d) => d.presetKey);
   const hers = data.dances.filter((d) => !d.presetKey);
   const editor = FEATURES.find((f) => f.key === "new_dance")!;
@@ -45,7 +45,7 @@ export function ChooseDance({
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <DanceTile name="Pirouette’s choice" icon="🩰" selected={selectedId == null} onClick={() => onSelect(null)} />
+        <DanceTile name={PIROUETTES_CHOICE_NAME} icon="🩰" selected={selectedId == null} onClick={() => onSelect(null)} />
         {presets.map((d) => (
           <DanceTile key={d.id} name={d.name} icon="🩰" selected={selectedId === d.id} onClick={() => onSelect(d.id)} />
         ))}

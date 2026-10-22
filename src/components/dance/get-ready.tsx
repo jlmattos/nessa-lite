@@ -37,11 +37,14 @@ export function GetReady({
   const calm = data.settings.reducedMotion;
 
   function save(patch: Partial<Look>) {
+    const nextLook = { ...look, ...patch };
     onLook(patch);
     setError(null);
     startTransition(async () => {
       try {
-        await setLook(patch);
+        // The whole look on screen: the first write never falls back to the column
+        // defaults, and the last request to arrive always carries complete state.
+        await setLook(nextLook);
       } catch (e) {
         setError(e instanceof Error ? e.message : "That didn’t save — try again.");
       }
@@ -151,10 +154,12 @@ function PickerRow({
   const permanent = kind === "music" ? [{ key: QUIET_KEY, name: "Quiet" }] : kind === "sparkle" ? [{ key: NONE_KEY, name: "None" }] : [];
 
   function pick(key: string) {
-    tick();
+    if (data.settings.sound) {
+      setVolume(data.settings.volume);
+      tick();
+    }
     onPick(key);
     if (kind === "music" && data.settings.sound && data.settings.music) {
-      setVolume(data.settings.volume);
       const song = SONGS[key];
       if (song && key !== QUIET_KEY) sequencer.preview(song, 2000);
       else sequencer.stop(0.3);
@@ -180,7 +185,7 @@ function PickerRow({
                 selected={value === i.key}
                 locked={locked}
                 hint={locked && i.shipped ? `at ${i.unlockAt}` : undefined}
-                isNew={!locked && i.unlockAt === data.n && data.n > 0}
+                isNew={!locked && i.unlockAt > 1 && i.unlockAt === data.n}
                 onClick={locked ? undefined : () => pick(i.key)}
               />
             );

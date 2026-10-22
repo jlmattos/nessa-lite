@@ -6,7 +6,7 @@
  */
 import {
   CATALOG, LENGTHS, MOVES, PROGRAMS, PROGRAM_BY_NUMBER, BASE_SLOTS, WORKOUTS_PER_PROGRAM, PROGRAMS_PER_SEASON,
-  announce, type CatalogItem, type MoveKey, type ProgramDef,
+  RECITALS_SHIPPED, PIROUETTES_CHOICE_NAME, announce, type CatalogItem, type MoveKey, type ProgramDef,
 } from "@/lib/dance-content";
 
 export type RehearsalRow = {
@@ -31,10 +31,18 @@ export type StageInput = {
   /** Today's workout exists and is completed. */
   todayCompleted: boolean;
   highWaterN: number;
+  /** Rows of completed workouts only (ordinals, looks, Program dances). */
   rehearsals: RehearsalRow[];
+  /**
+   * Every recital ever performed, from all rows whatever their workout's state:
+   * nothing clears danced_at or recital_program, so a Reopen never takes one away.
+   */
+  performedPrograms: number[];
 };
 
 const SEASON_ONE_END = WORKOUTS_PER_PROGRAM * PROGRAMS_PER_SEASON; // 50
+/** The day-1 base kit (unlockAt 1) is "the stage opens", never announced as items. */
+const FIRST_ITEM_DAY = 2;
 
 // ── Counts ──────────────────────────────────────────────────────────────────
 
@@ -59,19 +67,19 @@ export function ordinalOf(input: StageInput, performedOn: string): number {
 // ── Recitals ─────────────────────────────────────────────────────────────────
 
 export function performedRecitals(input: StageInput): number[] {
-  return input.rehearsals.filter((r) => r.recitalProgram != null && r.dancedAt).map((r) => r.recitalProgram as number);
+  return [...new Set(input.performedPrograms)].sort((a, b) => a - b);
 }
 
 export const maxPerformed = (input: StageInput) => Math.max(0, ...performedRecitals(input));
 
 /** The newest recital she has earned but not performed; older ones are skipped, never performed. */
 export function readyRecital(input: StageInput): number | null {
-  const n = countN(input);
-  const p = Math.floor(n / WORKOUTS_PER_PROGRAM);
+  if (!RECITALS_SHIPPED) return null;
+  const p = Math.floor(countN(input) / WORKOUTS_PER_PROGRAM);
   return p > maxPerformed(input) ? p : null;
 }
 
-/** Decorations present on every stage: one per performed recital, plus the gold upgrades of Season Two. */
+/** Decorations present on every stage: one per performed recital. */
 export function decorations(input: StageInput): ProgramDef[] {
   const top = maxPerformed(input);
   return PROGRAMS.filter((p) => p.program <= top);
@@ -81,12 +89,13 @@ export function decorations(input: StageInput): ProgramDef[] {
 
 const seasonVisible = (item: CatalogItem, nMax: number) => item.season === 1 || nMax >= SEASON_ONE_END;
 
-/** Everything unlocked at N_max (shipped or not: unshipped items are visible but promise-free). */
+/**
+ * Everything she can use at N_max: reached AND shipped. An unshipped item past
+ * its day stays dimmed and promise-free until its code ships (§9).
+ */
 export function unlockedKeys(nMax: number): Set<string> {
-  return new Set(CATALOG.filter((i) => i.unlockAt <= nMax && seasonVisible(i, nMax)).map((i) => i.key));
+  return new Set(CATALOG.filter((i) => i.shipped && i.unlockAt <= nMax && seasonVisible(i, nMax)).map((i) => i.key));
 }
-
-export const isUnlocked = (key: string, nMax: number) => unlockedKeys(nMax).has(key);
 
 /** Moves per dance at N_max: 6, then 8, 10, 12 as the shipped length items unlock. */
 export function slotCount(nMax: number): number {
@@ -114,19 +123,25 @@ export type NextUnlock =
   | { kind: "item"; item: CatalogItem; inWorkouts: number }
   | { kind: "recital"; program: number; inWorkouts: number };
 
-/** The "Next:" line: the nearest shipped item at or after todayN, else the next recital (never empty). */
+/**
+ * The "Next:" line: the nearest shipped item at or after todayN, or the next
+ * recital when that comes sooner or no shipped item lies ahead (§3.0).
+ */
 export function nextUnlock(tN: number, nMax: number): NextUnlock {
-  const ahead = CATALOG.filter((i) => i.shipped && i.unlockAt >= tN && seasonVisible(i, nMax))
+  const ahead = CATALOG.filter((i) => i.shipped && i.unlockAt >= Math.max(tN, FIRST_ITEM_DAY) && seasonVisible(i, nMax))
     .sort((a, b) => a.unlockAt - b.unlockAt)[0];
-  if (ahead) return { kind: "item", item: ahead, inWorkouts: ahead.unlockAt - tN };
   const nextRecitalN = isRecitalPosition(tN) ? tN + WORKOUTS_PER_PROGRAM : programOf(tN) * WORKOUTS_PER_PROGRAM;
-  return { kind: "recital", program: nextRecitalN / WORKOUTS_PER_PROGRAM, inWorkouts: nextRecitalN - tN };
+  const recital: NextUnlock = { kind: "recital", program: nextRecitalN / WORKOUTS_PER_PROGRAM, inWorkouts: nextRecitalN - tN };
+  if (!ahead) return recital;
+  if (RECITALS_SHIPPED && nextRecitalN < ahead.unlockAt) return recital;
+  return { kind: "item", item: ahead, inWorkouts: ahead.unlockAt - tN };
 }
 
-/** Shipped wardrobe, move and length items with fromN < unlockAt <= toN (decorations and features excluded). */
+/** Shipped wardrobe, move and length items with fromN < unlockAt <= toN (base kit, decorations and features excluded). */
 export function newlyUnlocked(fromN: number, toN: number, nMax: number): CatalogItem[] {
+  const from = Math.max(fromN, FIRST_ITEM_DAY - 1);
   return CATALOG.filter(
-    (i) => i.shipped && i.kind !== "feature" && i.unlockAt > fromN && i.unlockAt <= toN && seasonVisible(i, nMax)
+    (i) => i.shipped && i.kind !== "feature" && i.unlockAt > from && i.unlockAt <= toN && seasonVisible(i, nMax)
   ).sort((a, b) => a.unlockAt - b.unlockAt);
 }
 
@@ -151,24 +166,28 @@ export type ProgramLine = {
 };
 
 export function programLine(input: StageInput): ProgramLine {
-  const n = countN(input);
   const tN = todayN(input);
   const program = programOf(tN);
   const position = positionOf(tN);
-  const isRecitalDay = position === WORKOUTS_PER_PROGRAM;
-  const circles = [1, 2, 3, 4].map((p) => p < position || (p === position && input.todayCompleted)) as ProgramLine["circles"];
-  const star: ProgramLine["star"] = isRecitalDay ? (input.todayCompleted ? "done" : "today") : "future";
+  // Until recitals play (Phase 1b), position 5 is not marked as a recital: no promise it cannot keep.
+  const isRecitalDay = RECITALS_SHIPPED && position === WORKOUTS_PER_PROGRAM;
+  let circles = [1, 2, 3, 4].map((p) => p < position || (p === position && input.todayCompleted)) as ProgramLine["circles"];
+  let star: ProgramLine["star"] = isRecitalDay ? (input.todayCompleted ? "done" : "today") : "future";
 
   const performed = new Set(performedRecitals(input));
   const ready = readyRecital(input);
   let text: string;
   if (isRecitalDay && !performed.has(program)) text = `Recital ${program} today.`;
   else if (isRecitalDay) text = `Recital ${program} complete.`;
-  else if (ready != null) text = `Recital ${ready} is ready.`;
+  else if (ready != null) {
+    text = `Recital ${ready} is ready.`;
+    circles = [true, true, true, true];
+    star = "today";
+  } else if (position === WORKOUTS_PER_PROGRAM) text = `Rehearsal ${position}`;
   else text = `Rehearsal ${position} of 4`;
 
   let nextText: string;
-  if (n === 0 && !input.todayCompleted) nextText = "Today: the stage opens.";
+  if (tN === 1) nextText = "Today: the stage opens.";
   else {
     const next = nextUnlock(tN, countNMax(input));
     if (next.kind === "item") {
@@ -197,7 +216,7 @@ export function todayRow(input: StageInput): RehearsalRow | null {
 
 /**
  * The distinct dances of Program P, positions 1–4 in order, for a recital.
- * A position with no row or no snapshot plays Pirouette's choice as it is now (null).
+ * A position with no row or no snapshot plays Pirouette's choice as it is now (moves null).
  */
 export function programDances(input: StageInput, program: number): { name: string; moves: MoveKey[] | null }[] {
   const nMax = countNMax(input);
@@ -212,7 +231,7 @@ export function programDances(input: StageInput, program: number): { name: strin
     const key = moves.join(",");
     if (seen.has(key)) continue;
     seen.add(key);
-    out.push({ name: row?.danceName ?? "Pirouette's choice", moves: row?.moves ? (row.moves as MoveKey[]) : null });
+    out.push({ name: row?.danceName ?? PIROUETTES_CHOICE_NAME, moves: row?.moves ? (row.moves as MoveKey[]) : null });
   }
   return out;
 }
@@ -230,3 +249,6 @@ export function stageWaiting(input: StageInput): boolean {
 }
 
 export const themeOf = (program: number) => PROGRAM_BY_NUMBER.get(program)?.theme ?? `Program ${program}`;
+
+// Re-exported so callers that only need the string don't import the whole catalog.
+export { announce };

@@ -32,6 +32,8 @@ export function DanceFlow({ data }: { data: StageData }) {
   const [plan, setPlan] = useState<PerformancePlan | null>(null);
   const [replay, setReplay] = useState<PerformancePlan | null>(null);
   const [dancedThisVisit, setDancedThisVisit] = useState(false);
+  // Frozen at open: startDance revalidates the page mid-dance, and the strip must not change under her.
+  const [dancedOnOpen] = useState(data.dancedToday);
   const recitalDay = data.programLine.isRecitalDay;
 
   const onBow = useCallback((p: PerformancePlan) => {
@@ -80,7 +82,7 @@ export function DanceFlow({ data }: { data: StageData }) {
   }
 
   const idx = STEPS.indexOf(step);
-  const dancedDots = data.dancedToday || dancedThisVisit;
+  const dancedDots = dancedOnOpen || dancedThisVisit;
   const items: StripItem[] = STEPS.map((s, i) => {
     let state: StripState = i < idx ? "done" : i === idx ? "now" : "later";
     if (state === "later" && dancedDots && (s === "dance" || s === "bow")) state = "done";

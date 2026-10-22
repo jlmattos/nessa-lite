@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { StageData, Look, PerformancePlan } from "@/actions/dance";
 import { closeCurtains } from "@/actions/dance";
 import { Pirouette } from "@/components/dance/pirouette";
-import { StageBox } from "@/components/dance/stage";
+import { StageBox, type CurtainState } from "@/components/dance/stage";
 import { FigurineCat } from "@/components/cats";
 
 /**
@@ -28,6 +28,10 @@ export function Bow({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const calm = data.settings.reducedMotion;
+  // The curtains close over 3 s as the Bow opens; in calm mode they are simply closed.
+  const curtains: CurtainState = calm ? "closed" : "closing";
+  // What just played decides the line, not the text computed before the dance.
+  const line = plan.recital ? `Recital ${plan.recital.program} complete.` : data.programLine.text;
 
   function done() {
     setError(null);
@@ -43,7 +47,7 @@ export function Bow({
 
   return (
     <div className="space-y-3">
-      <StageBox stageKey={look.stage} curtains="closed" decorations={data.decorations}>
+      <StageBox stageKey={look.stage} curtains={curtains} decorations={data.decorations}>
         <div className={calm ? "" : "animate-lite-hop"}>
           <Pirouette size={150} costume={look.costume} />
         </div>
@@ -59,7 +63,7 @@ export function Bow({
 
       <div className="rounded-[1.25rem] bg-surface border border-line p-5 text-center">
         <p className="text-2xl font-bold">The end.</p>
-        <p className="text-sm text-muted mt-1">{data.programLine.text}</p>
+        <p className="text-sm text-muted mt-1">{line}</p>
         <p className="text-xs text-muted mt-2">{plan.dance.name}</p>
         {error && <p className="text-sm text-accent-deep mt-2">⚠ {error}</p>}
         <div className="mt-4 space-y-2">

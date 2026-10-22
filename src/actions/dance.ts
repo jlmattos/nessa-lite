@@ -6,7 +6,8 @@ import { revalidatePath } from "next/cache";
 import type { Settings } from "@/lib/settings";
 import { computeEarnedCats, type CatId } from "@/lib/collection";
 import {
-  COSTUMES, STAGES, MUSIC, SPARKLES, QUIET_KEY, NONE_KEY, RECITALS_SHIPPED, announce, isMoveKey, type MoveKey,
+  COSTUMES, STAGES, MUSIC, SPARKLES, QUIET_KEY, NONE_KEY, PRESET_DANCES, PIROUETTES_CHOICE_NAME,
+  announce, isMoveKey, type MoveKey,
 } from "@/lib/dance-content";
 import {
   countN, countNMax, programLine, readyRecital, decorations, unlockedKeys, slotCount, pirouettesChoice,
@@ -19,7 +20,7 @@ export type Look = { costume: string; stage: string; music: string; sparkle: str
 export type StageDance = { id: string | null; name: string; moves: MoveKey[]; presetKey: string | null };
 export type PerformancePlan = {
   dance: { name: string; moves: MoveKey[] };
-  /** A recital that plays first tonight (Phase 1b plays it; 1a records it). */
+  /** A recital that plays first tonight (Phase 1b plays it; until then always null). */
   recital: { program: number; dances: { name: string; moves: MoveKey[] }[] } | null;
 };
 
@@ -34,16 +35,17 @@ export type StageData = {
   n: number;
   nMax: number;
   programLine: ProgramLine;
-  /** Today's look, or yesterday's, or the defaults. */
+  /** Today's look, or the latest one, or the defaults. */
   look: Look;
   hasRowToday: boolean;
   dancedToday: boolean;
   /** Preselected dance; null = Pirouette's choice. */
   lastDanceId: string | null;
-  /** Presets first, then hers, newest first. */
+  /** Presets first (catalog order), then hers, newest first. */
   dances: StageDance[];
   pirouettesChoice: MoveKey[];
   slotCount: number;
+  /** Reached and shipped: what she can pick. */
   unlockedKeys: string[];
   /** Decoration keys present on every stage (one per performed recital). */
   decorations: string[];
@@ -54,11 +56,12 @@ export type StageData = {
   /** "New since last time: …" item announcements. */
   bannerSince: string[];
   earnedCats: CatId[];
-  /** Ambient sparkle count before the lane allocation. */
+  /** Ambient sparkle count with the Sparkle catch lane taken out of the budget. */
   ambient: number;
 };
 
 const DEFAULT_LOOK: Look = { costume: "classic", stage: "practice_room", music: "music_box", sparkle: "gold" };
+const PRESET_ORDER = Object.keys(PRESET_DANCES);
 
 export async function getStageData(): Promise<StageData> {
   const today = todayLocal();
@@ -66,15 +69,19 @@ export async function getStageData(): Promise<StageData> {
   const n = countN(input);
   const nMax = countNMax(input);
 
-  const { data: danceRows } = await supabase
+  const { data: danceRows, error } = await supabase
     .from("dances").select("*").is("archived_at", null).order("created_at", { ascending: true });
+  if (error) throw new Error(`Couldn’t load the dances: ${error.message}`);
   const all: StageDance[] = (danceRows ?? []).map((d) => ({
     id: d.id as string,
     name: d.name as string,
     moves: ((d.moves as string[]) ?? []).filter(isMoveKey),
     presetKey: (d.preset_key as string | null) ?? null,
   }));
-  const presets = all.filter((d) => d.presetKey);
+  // The fixed grid never reorders: presets by catalog order, not by insert time.
+  const presets = all
+    .filter((d) => d.presetKey)
+    .sort((a, b) => PRESET_ORDER.indexOf(a.presetKey!) - PRESET_ORDER.indexOf(b.presetKey!));
   const hers = all.filter((d) => !d.presetKey).reverse();
   const danceIds = new Set(all.map((d) => d.id));
 
@@ -87,7 +94,7 @@ export async function getStageData(): Promise<StageData> {
   const lastDanced = [...input.rehearsals].filter((r) => r.dancedAt).sort((a, b) => (a.performedOn < b.performedOn ? 1 : -1))[0];
   const lastDanceId = lastDanced?.danceId && danceIds.has(lastDanced.danceId) ? lastDanced.danceId : null;
 
-  const ready = RECITALS_SHIPPED ? readyRecital(input) : null;
+  const ready = readyRecital(input);
   const recital = ready != null
     ? {
         program: ready,
@@ -125,24 +132,39 @@ export async function getStageData(): Promise<StageData> {
 
 async function openWorkoutToday() {
   const today = todayLocal();
-  const { data: workout } = await supabase
+  const { data: workout, error } = await supabase
     .from("workouts").select("id, completed_at").eq("performed_on", today).maybeSingle();
+  if (error) throw new Error(`Couldn’t reach the stage: ${error.message}`);
   if (!workout?.completed_at) throw new Error("Finish today’s workout first — then Pirouette dances.");
   return { id: workout.id as string, today };
 }
 
-function assertKey(value: string, allowed: string[], what: string) {
-  if (!allowed.includes(value)) throw new Error(`That ${what} isn’t available`);
-}
+/**
+ * Get ready: upsert today's look. The client sends the whole look on screen so
+ * the first write never falls back to the column defaults, and the last request
+ * to arrive always carries complete state. Touches only the four look columns.
+ */
+export async function setLook(look: Partial<Look>) {
+  const today = todayLocal();
+  const { input, workout } = await loadStageInput(today);
+  if (!workout?.completedAt) throw new Error("Finish today’s workout first — then Pirouette dances.");
+  const allowed = unlockedKeys(countNMax(input));
+  const check = (value: string | undefined, keys: string[], extra: string[], what: string) => {
+    if (value == null) return;
+    if (!(extra.includes(value) || (keys.includes(value) && allowed.has(value)))) {
+      throw new Error(`That ${what} isn’t ready yet`);
+    }
+  };
+  check(look.costume, COSTUMES.map((c) => c.key), [], "costume");
+  check(look.stage, STAGES.map((s) => s.key), [], "stage");
+  check(look.music, MUSIC.map((m) => m.key), [QUIET_KEY], "music");
+  check(look.sparkle, SPARKLES.map((s) => s.key), [NONE_KEY], "sparkle style");
 
-/** Get ready: upsert today's look. Touches only the four look columns, never the dance or danced_at. */
-export async function setLook(patch: Partial<Look>) {
-  const { id } = await openWorkoutToday();
-  const row: Record<string, unknown> = { workout_id: id };
-  if (patch.costume != null) { assertKey(patch.costume, COSTUMES.map((c) => c.key), "costume"); row.costume = patch.costume; }
-  if (patch.stage != null) { assertKey(patch.stage, STAGES.map((s) => s.key), "stage"); row.stage = patch.stage; }
-  if (patch.music != null) { assertKey(patch.music, [...MUSIC.map((m) => m.key), QUIET_KEY], "music"); row.music = patch.music; }
-  if (patch.sparkle != null) { assertKey(patch.sparkle, [...SPARKLES.map((s) => s.key), NONE_KEY], "sparkle style"); row.sparkle = patch.sparkle; }
+  const row: Record<string, unknown> = { workout_id: workout.id };
+  if (look.costume != null) row.costume = look.costume;
+  if (look.stage != null) row.stage = look.stage;
+  if (look.music != null) row.music = look.music;
+  if (look.sparkle != null) row.sparkle = look.sparkle;
   const { error } = await supabase.from("rehearsals").upsert(row, { onConflict: "workout_id" });
   if (error) throw new Error(error.message);
   revalidatePath("/dance");
@@ -160,11 +182,12 @@ export async function startDance(danceId: string | null): Promise<PerformancePla
   if (!workout?.completedAt) throw new Error("Finish today’s workout first — then Pirouette dances.");
   const nMax = countNMax(input);
 
-  let name = "Pirouette’s choice";
+  let name = PIROUETTES_CHOICE_NAME;
   let moves: MoveKey[] = pirouettesChoice(nMax);
   let id: string | null = null;
   if (danceId) {
-    const { data: d } = await supabase.from("dances").select("*").eq("id", danceId).maybeSingle();
+    const { data: d, error } = await supabase.from("dances").select("*").eq("id", danceId).maybeSingle();
+    if (error) throw new Error(`Couldn’t load that dance: ${error.message}`);
     if (d) {
       id = d.id as string;
       name = d.name as string;
@@ -178,7 +201,7 @@ export async function startDance(danceId: string | null): Promise<PerformancePla
   if (!existing?.dancedAt) update.danced_at = new Date().toISOString();
 
   let recital: PerformancePlan["recital"] = null;
-  const ready = RECITALS_SHIPPED ? readyRecital(input) : null;
+  const ready = readyRecital(input);
   if (ready != null && existing?.recitalProgram == null) {
     update.recital_program = ready;
     recital = {

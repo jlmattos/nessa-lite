@@ -15,12 +15,27 @@ export type TodayWorkout = {
 };
 
 export async function loadStageInput(today: string): Promise<{ input: StageInput; workout: TodayWorkout | null; settings: Settings }> {
-  const [{ data: workout }, { data: completed }, { data: rows }, settings] = await Promise.all([
+  const [w, c, r, settings] = await Promise.all([
     supabase.from("workouts").select("id, completed_at, stage_closed_at").eq("performed_on", today).maybeSingle(),
     supabase.from("workouts").select("performed_on").not("completed_at", "is", null),
     supabase.from("rehearsals").select("*, workouts!inner(performed_on, completed_at)"),
     getSettings(),
   ]);
+  // supabase-js returns errors instead of throwing. A failed read must never
+  // look like "nothing yet": callers would write on wrong assumptions.
+  for (const q of [w, c, r]) {
+    if (q.error) throw new Error(`Couldn’t load the stage: ${q.error.message}`);
+  }
+  const workout = w.data;
+  const completed = c.data;
+  const rows = r.data;
+
+  // Recitals stay performed whatever happens to their workout afterwards.
+  const performedPrograms = (rows ?? [])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .filter((row: any) => row.recital_program != null && row.danced_at)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((row: any) => row.recital_program as number);
 
   const rehearsals: RehearsalRow[] = (rows ?? [])
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -47,6 +62,7 @@ export async function loadStageInput(today: string): Promise<{ input: StageInput
     todayCompleted: !!workout?.completed_at,
     highWaterN: settings.highWaterN,
     rehearsals,
+    performedPrograms,
   };
 
   return {

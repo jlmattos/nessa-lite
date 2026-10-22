@@ -208,6 +208,9 @@ export const RECITALS_SHIPPED = false;
 export const PROGRAMS_PER_SEASON = 10;
 
 // ── Presets and naming words ─────────────────────────────────────────────────
+/** The virtual dance: every unlocked move once. One spelling everywhere (§2 principle 9). */
+export const PIROUETTES_CHOICE_NAME = "Pirouette’s choice";
+
 export const PRESET_DANCES: Record<string, { name: string; moves: MoveKey[] }> = {
   little_waltz: { name: "Little Waltz", moves: ["plie", "reach", "twirl", "plie", "reach", "arabesque"] },
   twirl_song: { name: "Twirl Song", moves: ["reach", "twirl", "arabesque", "twirl"] },
