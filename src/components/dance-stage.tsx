@@ -52,7 +52,7 @@ export function DanceStage({ data }: { data: DanceData }) {
         <Card>
           <p className="font-semibold">Pirouette is resting 💤</p>
           <p className="text-sm text-muted mt-1">
-            Finish today’s workout and she’ll be ready to dance with you.
+            Finish today’s workout. Then Pirouette dances.
           </p>
           <Link
             href="/"

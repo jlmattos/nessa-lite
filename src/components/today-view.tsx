@@ -141,7 +141,7 @@ export function TodayView({ data }: { data: TodayData }) {
         </div>
         <p className="text-sm mt-2">
           {completed ? (
-            <>All done — time to dance!</>
+            <>All done — Pirouette is ready on the stage.</>
           ) : current ? (
             <>
               Now: <span className="font-semibold">{current.name}</span>
@@ -161,7 +161,7 @@ export function TodayView({ data }: { data: TodayData }) {
             <BallerinaCat size={56} dancing={!calm} />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-success text-lg">All done! 🎉</p>
+            <p className="font-semibold text-success text-lg">Workout done. 🎉</p>
             <p className="text-xs text-muted mt-0.5">
               {done} movement{done !== 1 ? "s" : ""} finished. Pirouette is ready to dance.
             </p>
@@ -169,7 +169,7 @@ export function TodayView({ data }: { data: TodayData }) {
               href="/dance"
               className="inline-block mt-2 rounded-xl bg-accent text-white text-sm font-semibold px-4 py-2.5"
             >
-              Dance time →
+              Go to the stage →
             </Link>
           </div>
           <button
@@ -213,7 +213,7 @@ export function TodayView({ data }: { data: TodayData }) {
           ) : (
             <Card className="p-4 space-y-3">
               <p className="text-sm text-center">
-                {allChecked ? "All done for today?" : `${total - done} step${total - done !== 1 ? "s" : ""} left — finish anyway?`}
+                {allChecked ? "Finish today’s workout?" : `${total - done} step${total - done !== 1 ? "s" : ""} left — finish anyway?`}
               </p>
               <div className="flex gap-2">
                 <button onClick={() => setConfirmFinish(false)} className="flex-1 h-14 rounded-xl border border-line font-medium">
@@ -230,7 +230,7 @@ export function TodayView({ data }: { data: TodayData }) {
                   disabled={isPending}
                   className="flex-1 h-14 rounded-xl bg-success text-white font-semibold"
                 >
-                  Yes, finish
+                  Finish
                 </button>
               </div>
             </Card>

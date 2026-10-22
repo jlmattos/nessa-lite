@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 // Same four tabs, same order, every day — the layout never rearranges itself.
 const tabs = [
   { href: "/", label: "Today", emoji: "🐱" },
-  { href: "/dance", label: "Dance", emoji: "🩰" },
+  { href: "/dance", label: "Stage", emoji: "🩰" },
   { href: "/collection", label: "Friends", emoji: "🐾" },
   { href: "/routine", label: "Routine", emoji: "🗓️" },
 ];

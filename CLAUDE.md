@@ -21,7 +21,7 @@ things, ask him rather than reasoning from "autism" in general.
 - **A visual schedule.** Today shows every step of the session as an icon
   strip with the current step highlighted and the dance at the end, then the
   same steps as big cards. She can always see where she is and what is next.
-- **Clear beginning and ending.** Start → steps → Finish → Dance. Finishing
+- **Clear beginning and ending.** Start → steps → Finish → Stage. Finishing
   is one explicit tap with a confirmation, and it unlocks the dance for that day.
 - **Nothing can be done wrong.** Every action is undoable in one tap. The
   app never scores, times, or penalizes a workout. Partial sessions can still
@@ -37,6 +37,37 @@ things, ask him rather than reasoning from "autism" in general.
   screen. Choice lives in the game, not in the workout.
 - **The more workouts, the better the game gets.** Rewards are derived from
   workout history. See `GAME-DESIGN.md`.
+
+## The game (read GAME-DESIGN.md before touching /dance)
+
+`GAME-DESIGN.md` is the source of truth for everything on the stage. It came
+out of a judged design pass (four independent proposals, three judges, two
+adversarial critiques) and is written to be built from directly. The short
+version:
+
+- **Recital Season.** One finished workout is one rehearsal. Five workouts
+  (by count, never by calendar) make a Program; the fifth is recital day.
+  Ten Programs are Season One (50 workouts, same cap as the cat shelf).
+- **One fixed stage session**, drawn with the same schedule strip as Today:
+  Get ready (costume, stage, music, sparkle style) · Choose a dance
+  (presets, her saved dances, the editor from workout 7) · Dance (the
+  performance; Sparkle catch is an optional layer Jose turns on) · Bow
+  ("The end.", then "Done for today"). No menu of games.
+- **Everything is derived** from the completed-workout count and the rows
+  she creates (`dances`, `rehearsals`), exactly like the cats. Unlocks use a
+  persisted high-water mark so nothing ever relocks.
+- **A number she has seen never changes.** Catalog items carry `shipped`;
+  an unshipped item shows no workout number and the "Next:" line skips it.
+- **One new thing per workout at most**, never on a cat day or a recital day.
+- **Motion budget and sound rules** are in §7 of the doc and are not optional.
+- **Build order** is §9: Phase 0 is an iPad spike of the Pirouette rig and
+  one music loop on the real device before anything else ships.
+- **§10 lists twenty open questions for Jose**, each with the default the
+  doc already uses. When Jose answers one, change the doc first, then the code.
+
+The scaffold predates the doc: `/dance` still shows only a Twirl button, and
+none of the §8 tables exist yet. The copy already uses the doc's names
+("Stage" tab, "Go to the stage", "Finish today's workout?").
 
 ## Commands
 
@@ -56,7 +87,7 @@ renders (settings fall back to defaults), but every data query throws.
 ## Layout
 
 - `src/app/` — App Router, all pages `force-dynamic`. Tabs: `/` Today,
-  `/dance` Pirouette's stage, `/collection` cat friends + stats + preferences,
+  `/dance` Pirouette's stage (tab label "Stage"), `/collection` cat friends + stats + preferences,
   `/routine` the editor Jose uses. `layout.tsx` reads settings and sets
   `data-reduced-motion` on `<html>`.
 - `src/actions/*.ts` — server actions (`"use server"`), the only place the
