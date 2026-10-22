@@ -21,5 +21,5 @@ lives in `GAME-DESIGN.md`; how to work on the code is in `CLAUDE.md`.
 ## Backups
 
 `node scripts/backup.mjs` dumps every table to `backups/`. The nightly GitHub
-Action is included but its schedule is commented out until the repository
-secrets exist (see `.github/workflows/backup.yml`).
+Action runs on a schedule and skips cleanly until the two repository secrets
+exist (see `.github/workflows/backup.yml`).

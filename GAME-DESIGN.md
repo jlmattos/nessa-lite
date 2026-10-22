@@ -6,11 +6,11 @@
 
 When you finish your workout, Pirouette's stage opens. You pick her costume, her stage and her music. You pick a dance, or make your own out of ballet moves. Then she dances it for you, with sparkles. Every workout is one rehearsal. After four rehearsals comes a recital: Pirouette dances all of that Program's dances while your cat friends watch from the front row, and the stage gets something new that stays forever. The more workouts you do, the more Pirouette has to wear, the more moves she knows, and the grander her stage becomes.
 
-**For the developer:** one fixed post-workout session (Get ready · Choose a dance · Dance · Bow) drawn with the same schedule strip as Today. The three requested game shapes live inside it: Get ready is the dress rehearsal, Choose a dance holds the choreographer, and the rhythm game is an ignorable sparkle layer on top of the dance that is off until Jose turns it on. Every reward is derived from the completed-workout count or from rows she created, exactly like the cat shelf. Rest days change nothing. Nothing is ever taken away, and no number she has read ever changes.
+**For the developer:** one fixed post-workout session (Get ready · Choose a dance · Dance · Bow) drawn with the same schedule strip as Today. The three requested game shapes live inside it: Get ready is the dress rehearsal, Choose a dance holds the choreographer, and the rhythm game is an ignorable sparkle layer on top of the dance, on from the first evening and switchable off in preferences. Every reward is derived from the completed-workout count or from rows she created, exactly like the cat shelf. Rest days change nothing. Nothing is ever taken away, and no number she has read ever changes.
 
 ## 2. Principles
 
-1. **One session, same shape every day.** The stage is a four-step strip in the same visual grammar as Today, in the same order, with the same "Now … then …" line. There is no menu of games. On a recital day the four steps are the same; only what plays inside Dance changes.
+1. **One session, same shape every day.** The stage is a four-step strip in the same visual grammar as Today, in the same order, with the same "Now … then …" line. There is no menu of games. On a recital day the strip keeps its four steps and their order, but the third step is drawn big: a larger gold star labelled "Recital" in place of the slipper labelled "Dance" (Jose: big days marked big), and what plays inside it is the recital.
 2. **Four taps is a complete evening.** Every step has the last choice preselected and one full-width bottom button. Next · Next · Start the dance · Done for today.
 3. **The workout stays plain; the stage is the reward.** No sparkle, music or counts during the workout. Contrast makes the stage feel special.
 4. **One new thing per workout at most, announced before it appears.** Wardrobe and feature unlocks never land on a cat day or a recital day. The only double days are the cat-and-recital days (5, 20, 25, 35, 50), where the cat appears on the Friends tab and the decoration at the Bow, each announced in its own place. Locked items are visible in their fixed slot; the workout number under a locked item appears only once that item's code has shipped, and a number that has been shown never changes. A "Next: …" line always says what is coming and is never empty.
@@ -26,7 +26,7 @@ Throughout, N = number of completed workouts (see §8 for `stage_start_on` and t
 
 ### 3.0 Opening the app (rest state)
 
-**Today tab** (unchanged layout): the routine the rotation suggests, Start button (h-16), and the visual schedule strip: one icon per movement, then the ballet-slipper icon (Dance) as the last step. Current step ringed in coral. Line: "Now: Arm circles · then: Wall sit." The slipper has three states: outline (not yet), ringed coral (the stage is open and she has not danced yet today), dotted (today's `rehearsals` row has `danced_at`). There is no second star on the strip; the star lives only in the Program line and means only "recital".
+**Today tab** (unchanged layout): the routine the rotation suggests, Start button (h-16), and the visual schedule strip: one icon per movement, then the ballet-slipper icon (Dance) as the last step. Current step ringed in coral. Line: "Now: Arm circles · then: Wall sit." The slipper has three states: outline (not yet), ringed coral (the stage is open and she has not danced yet today), dotted (today's `rehearsals` row has `danced_at`). On recital day (position 5, Recital P not yet performed) the slipper at the end of Today's strip is replaced by a larger gold star labelled "Recital", and the text under the strip reads "Recital 1 today." On every other day there is no star on the strip; the star lives only in the Program line and means only "recital".
 
 Under the strip, the **Program line** (new, static, two short rows):
 
@@ -55,7 +55,7 @@ Finish (h-16) → one confirmation sheet "Finish today's workout?" [Finish] [Not
 
 The current step on opening is derived, never remembered in the browser: `workouts.stage_closed_at` set → the closed screen (§3.10); otherwise **Get ready**, with today's row (if any) preselected. If the row already has `danced_at`, the Dance and Bow steps show their dots so she can see she has danced; tapping through plays again.
 
-The **dance strip** is rendered by the same `ScheduleStrip` component as Today: **Get ready** (dress icon) · **Choose a dance** (music-score icon) · **Dance** (ballet slipper) · **Bow** (clapping hands). Current step ringed in coral, done steps dotted, line "Now: Get ready · then: Choose a dance". The strip is identical on recital days.
+The **dance strip** is rendered by the same `ScheduleStrip` component as Today: **Get ready** (dress icon) · **Choose a dance** (music-score icon) · **Dance** (ballet slipper) · **Bow** (clapping hands). Current step ringed in coral, done steps dotted, line "Now: Get ready · then: Choose a dance". On recital day the third step is the larger gold star labelled "Recital", in the same slot and order, and the "then:" that points at it says "Recital".
 
 ### 3.6 Get ready
 
@@ -69,7 +69,7 @@ Under her, a 2×2 grid of **choice cards**: Costume · Stage · Music · Sparkle
 
 Pirouette small (120 px) at the top left; at the right, the **move strip** of this dance's moves drawn exactly like the schedule strip (6 slots at first, later 8/10/12). Below, a fixed 2×2 grid of tiles that never reorders: **Pirouette's choice** (star), **Little Waltz** (star), **Twirl Song** (star), **New dance** (dimmed until the editor unlocks; "at 7" appears only once the editor has shipped). Under the grid, "My dances": her saved dances newest first (empty until she saves one). The last-danced dance is preselected. Default path: "Next: Dance".
 
-Tapping "New dance" or a saved dance's "Change" button opens the editor (§5.2). On an on-time recital day (position 5) this screen instead shows "Today's dances": the Program's 1–4 dances as read-only tiles, and the button still reads "Next: Dance". On a day when an older recital is ready (§4), the screen is the normal Choose a dance with one line above the grid: "Recital 1 is ready. It plays first."
+Tapping "New dance" or a saved dance's "Change" button opens the editor (§5.2). On an on-time recital day (position 5) this screen instead shows "Today's dances": the Program's 1–4 dances as read-only tiles, and the button reads "Next: Recital". On a day when an older recital is ready (§4), the screen is the normal Choose a dance with one line above the grid: "Recital 1 is ready. It plays first."
 
 ### 3.8 Dance
 
@@ -91,6 +91,8 @@ Everything is in the same place. A day she does not open the app is a rest day; 
 
 ## 4. The long-term arc
 
+**The story.** Pirouette has joined the theater for her first Season. Every workout Nessa finishes is one of Pirouette's rehearsals; every five rehearsals Pirouette gives a recital; every recital leaves the stage grander than before. Ten recitals make the Season, and the Season ends with fireworks and a poster of everything they did together. The story is told by the Season map (below) and by the stage itself, never by text she has to read: each Program has a theme that names its poster, and every recital adds a visible, permanent decoration. Jose's brief: the mini-game must always read as one chapter of this longer story, so that finishing the next workout is how the story continues. The stage is locked until today's workout is finished, and the locked stage says so in one sentence ("Finish today's workout. Then Pirouette dances.").
+
 - **One finished workout = one rehearsal.** Five consecutive completed workouts, by count, not calendar, = one **Program**. Positions 1–4 are rehearsals; position 5 is **recital day**.
 - **Recitals stay ready until performed, and only the newest is performed.** Recital P becomes ready at N ≥ 5P and remains ready until a `rehearsals` row has `recital_program = P` and `danced_at` set. If she finished workout 5 but never opened the stage, workout 6's stage visit plays Recital 1 first and then her chosen dance (strip unchanged; Today says "Recital 1 is ready"). If more than one recital is ready, only the newest is performed; the older ones are skipped, their posters still derive from their rehearsal rows, and their decorations arrive together with the newest recital's.
 - **Ten Programs = Season One** (50 workouts, the same cap as the cat shelf). Season Two runs 51–100 with content only; the daily flow never changes.
@@ -98,10 +100,10 @@ Everything is in the same place. A day she does not open the app is a rest day; 
   1. **The stage accumulates decorations after every performed recital**, present every day afterwards on every stage, no choice needed. Decorations derive from the highest performed `recital_program`, so the Bow card is their one announcement.
   2. **The wardrobe fills in**: 8 costumes, 7 stages, 6 music loops (plus Quiet), 5 sparkle styles (plus None) by 50.
   3. **The choreographer grows**: 4 → 8 moves, 6 → 12 moves per dance.
-  4. **The sparkle grows**: ambient sparkles = 6 + Programs completed (`floor(N/5)`, cap 12) in "lots"; Sparkle catch can be turned on from 11 and gains a second lane from 34 (both Jose's call, §5.3).
+  4. **The sparkle grows**: ambient sparkles = 6 + Programs completed (`floor(N/5)`, cap 12) in "lots"; Sparkle catch is on from the first evening and gains a second lane at 34 (§5.3).
   5. **Recitals grow by themselves**: they replay her own dances, in more costumes, on bigger stages, with more cats in the audience (cats unlock at 1, 3, 5, 8, 12, 16, 20, 25, 35, 50).
-  6. **A Programs shelf** on the Friends tab: one poster per Program, next to the cats, so months of work are visible in one place.
-- **Program themes** name the posters and group the content so each Program feels like one chapter. The theme word appears only on the poster and the Programs shelf, never in a Bow card or an announcement, so it cannot be confused with a wardrobe item:
+  6. **A Season map** on the Friends tab, next to the cats: ten poster slots along a winding path, one per Program, with every Program's theme name visible from day one (like the locked tiles), the current Program ringed in coral, and each performed recital's poster filling its slot. Months of work are visible in one place, and so is the road ahead.
+- **Program themes** name the posters and group the content so each Program feels like one chapter. The theme word appears only on the poster and the Season map, never in a Bow card or an announcement, so it cannot be confused with a wardrobe item:
 
 | Program | Workouts | Theme | Recital adds |
 |---|---|---|---|
@@ -118,7 +120,7 @@ Everything is in the same place. A day she does not open the app is a rest day; 
 
 ### 4.1 Season One unlock table (N = completed workouts)
 
-Cat days (1, 3, 5, 8, 12, 16, 20, 25, 35, 50) carry no wardrobe or feature unlock: the cat is the new thing. Recital days (multiples of 5) bring their decoration only, at the Bow. Workouts with nothing new of their own: 29, 48, 49, and from her point of view 11 and 34 (preferences Jose turns on). Every other workout brings one item. Every catalog item has a unique name across all kinds, and every announcement carries the kind word.
+Cat days (1, 3, 5, 8, 12, 16, 20, 25, 35, 50) carry no wardrobe or feature unlock: the cat is the new thing. Recital days (multiples of 5) bring their decoration only, at the Bow. The only workout with nothing new of its own is 49. Every other workout brings one item. Every catalog item has a unique name across all kinds, and every announcement carries the kind word.
 
 | N | Unlock | Kind |
 |---|---|---|
@@ -130,7 +132,7 @@ Cat days (1, 3, 5, 8, 12, 16, 20, 25, 35, 50) carry no wardrobe or feature unloc
 | 7 | New dance (the editor) | feature |
 | 9 | Sauté | move |
 | 10 | Recital 2 → string lights | decoration |
-| 11 | Sparkle catch becomes available to turn on (Jose; not announced to her) | preference |
+| 11 | Candy Waltz | music |
 | 13 | Sugar Plum | costume |
 | 14 | Longer dances: 8 moves | length |
 | 15 | Recital 3 → flower garlands | decoration |
@@ -146,11 +148,12 @@ Cat days (1, 3, 5, 8, 12, 16, 20, 25, 35, 50) carry no wardrobe or feature unloc
 | 26 | Rain Piano | music |
 | 27 | Curtsy | move |
 | 28 | Longer dances: 10 moves | length |
+| 29 | Puddle Hop | music |
 | 30 | Recital 6 → chandelier | decoration |
 | 31 | Ocean Waves | music |
 | 32 | Seashore | stage |
 | 33 | Glide | move |
-| 34 | Sparkle catch second lane becomes available (Jose; not announced to her) | preference |
+| 34 | Sparkles from both sides (second Sparkle catch lane) | feature |
 | 35 | Recital 7 → orchestra pit | decoration |
 | 36 | Twinkles | sparkle style |
 | 37 | Starlight | costume |
@@ -164,9 +167,10 @@ Cat days (1, 3, 5, 8, 12, 16, 20, 25, 35, 50) carry no wardrobe or feature unloc
 | 45 | Recital 9 → confetti at the bow | decoration |
 | 46 | Colour Drops | sparkle style |
 | 47 | Rainbow | costume |
+| 48 | Carnival Parade | music |
 | 50 | Recital 10 → fireworks, Season One poster | decoration |
 
-Totals at 50: 8 costumes, 7 stages, 6 music loops, 5 sparkle styles, 8 moves, 12 moves per dance, 10 decorations, 10 posters. Longest gap between unlocks: 3 workouts (47 → 50); the "Next: …" line falls back to the next recital whenever no shipped item is ahead, so it is never empty.
+Totals at 50: 8 costumes, 7 stages, 9 music loops, 5 sparkle styles, 8 moves, 12 moves per dance, 10 decorations, 10 posters. Longest gap between unlocks: 2 workouts (48 → 50); the "Next: …" line falls back to the next recital whenever no shipped item is ahead, so it is never empty.
 
 ### 4.2 Season Two (51–100), content only
 
@@ -183,7 +187,7 @@ Same flow, same strip, recitals every 5. Every item is a palette swap, a gradien
 | 97 | **Crown** costume (reuses the cat crown overlay) |
 | 100 | Recital 20: grand fireworks, Season Two poster |
 
-After 100: recitals, posters and the Programs shelf continue forever with no new assets, and the "Next:" line keeps naming the next recital. Season Three is whatever Jose adds to the catalog.
+After 100: recitals, posters and the Season map continue forever with no new assets, and the "Next:" line keeps naming the next recital. Season Three is whatever Jose adds to the catalog.
 
 ## 5. The three mini-games (and the recital that ties them together)
 
@@ -214,7 +218,7 @@ After 100: recitals, posters and the Programs shelf continue forever with no new
 
 ### 5.2 Make a dance (choreographer) — presets from workout 1, editor from workout 7
 
-**How it works.** Inside step 2 (§3.7). Tapping "New dance" (or "Change" on a saved dance) opens the **editor**: one fixed instruction line, "Tap a move. It goes in the next empty slot."; the move strip of empty rounded slots; below it a fixed 2×4 **move palette**, big tiles (72 px, icon + one word), locked ones dimmed, with their number once shipped. Tap a move → it fills the next empty slot, Pirouette previews it once at normal speed, and its note plays. Tap a filled slot → it empties and later slots shift left. "Undo" removes the last move. When the slots are full, a palette tap makes the strip glow once (`lite-pop`) and plays no note, so the tap still does something. "Save" stores the dance as "Dance K" (K = count of all her saved dances, including put-away ones, + 1, so names never repeat) with an optional "Change name" button (h-14) that opens two rows of word tiles (Moon · Star · Garden · Snow · Rose · Sunny / Waltz · Dance · Twirl · Dream · Song · Steps → "Moon Waltz"); the keyboard is never required. Leaving the editor with unsaved moves asks once: "Save this dance?" [Save] [Don't save]. A one-move dance is valid. "Next: Dance" plays it.
+**How it works.** Inside step 2 (§3.7). Tapping "New dance" (or "Change" on a saved dance) opens the **editor**: one fixed instruction line, "Tap a move. It goes in the next empty slot."; the move strip of empty rounded slots; below it a fixed 2×4 **move palette**, big tiles (72 px, icon + one word), locked ones dimmed, with their number once shipped. Tap a move → it fills the next empty slot, Pirouette previews it once at normal speed, and its note plays. Tap a filled slot → it empties and later slots shift left. "Undo" removes the last move. When the slots are full, a palette tap makes the strip glow once (`lite-pop`) and plays no note, so the tap still does something. "Save" opens the naming screen first (Jose: word tiles first): two rows of word tiles (Moon · Star · Garden · Snow · Rose · Sunny / Waltz · Dance · Twirl · Dream · Song · Steps), one tap from each row makes the name ("Moon Waltz"), the name-so-far sits above the tiles, and the "Save" button (h-16) is enabled from the start, so skipping both rows saves the dance as "Dance K" (K = count of all her saved dances, including put-away ones, + 1, so names never repeat). A word-tile name that is already taken gets " 2", " 3", … appended. The keyboard is never required. Leaving the editor with unsaved moves asks once: "Save this dance?" [Save] [Don't save]. A one-move dance is valid. "Next: Dance" plays it.
 
 **Pirouette's choice** is a virtual dance, never a row: every unlocked move once, in catalog order, up to the length limit. It grows on move days, which the ending card announces ("Pirouette's choice has Sauté now."), and it is always the first tile, so she never has to have made a dance. What it contained on any evening is snapshotted on that evening's row (§8), so posters never change afterwards.
 
@@ -238,23 +242,23 @@ Every keyframe's duration is `calc(var(--beat) * beats)`, with `--beat` set on t
 
 **Sensory notes.** Previews are single moves, never looped. Palette positions are fixed from day one. Building a dance composes a tune, so there is no wrong sequence.
 
-### 5.3 The Dance with Sparkle catch (rhythm) — dance from workout 1; Sparkle catch off by default, available from workout 11, second lane from 34
+### 5.3 The Dance with Sparkle catch (rhythm) — dance from workout 1; Sparkle catch on from the first evening, second lane from 34
 
 **How it works.** Step 3 (§3.8). One beat clock drives everything: `AudioContext.currentTime` when music is on, a `setTimeout` clock at the same tempo when music is off or Quiet is chosen. Moves advance on the clock; the move strip highlights the current move.
 
-Sparkle catch is a **layer, not a mode**, and it is **off until Jose turns it on** (`sparkle_taps`, default off; the preference is disabled with the note "from workout 11" until N_max ≥ 11). When on, the Dance screen carries the fixed line "Tap when the sparkle reaches Pirouette's hand. You can also just watch." One sparkle per move drifts from the top-left wing along a fixed soft arc to Pirouette's raised hand over two beats. A faint gold ring around her is static until her first catch ever, and pulses on the beat from then on, so the only new motion on the first evening is the sparkle itself. A tap anywhere on the stage while the sparkle is inside the ring (±400 ms of arrival) → a 6-particle burst and a soft bell. A tap at any other time → one small silent sparkle at the fingertip. A sparkle not caught passes behind her and fades. Caught sparkles accumulate as a soft radial glow on the stage floor (opacity 0.1 + 0.04 per catch, max 0.6) and persist through the Bow; `recordCatches(n)` adds them to `sparkles_caught` once at the Bow, including after Stop and after "Dance again". No number appears unless Jose turns on `sparkle_count`. **The dance plays identically whether or not she taps**: ignoring the sparkles is simply the dress rehearsal.
+Sparkle catch is a **layer, not a mode**. Jose's decision: it is **on from the first evening** (`sparkle_taps`, default on; the preference stays so he can switch it off), and he shows her once before her first stage visit. When on, the Dance screen carries the fixed line "Tap when the sparkle reaches Pirouette's hand. You can also just watch." One sparkle per move drifts from the top-left wing along a fixed soft arc to Pirouette's raised hand over two beats. A faint gold ring around her is static until her first catch ever, and pulses on the beat from then on, so the only new motion on the first evening is the sparkle itself. A tap anywhere on the stage while the sparkle is inside the ring (±400 ms of arrival) → a 6-particle burst and a soft bell. A tap at any other time → one small silent sparkle at the fingertip. A sparkle not caught passes behind her and fades. Caught sparkles accumulate as a soft radial glow on the stage floor (opacity 0.1 + 0.04 per catch, max 0.6) and persist through the Bow; `recordCatches(n)` adds them to `sparkles_caught` once at the Bow, including after Stop and after "Dance again". No number appears unless Jose turns on `sparkle_count`. **The dance plays identically whether or not she taps**: ignoring the sparkles is simply the dress rehearsal.
 
-**How it evolves.** From workout 11 Jose can turn the lane on, after showing her once; the day he does is the day it appears, so the unlock table says nothing to her. From workout 34 a second lane from the right can be turned on so two sparkles per move arrive on alternating beats. Sparkle style follows the Get ready choice. Recitals run the layer across all their dances.
+**How it evolves.** The lane is there from her first dance. At workout 34 a second lane from the right unlocks ("New today: sparkles from both sides"), so two sparkles per move arrive on alternating beats. Sparkle style follows the Get ready choice. Recitals run the layer across all their dances.
 
 **Sensory notes.** Tempo 56–84 bpm, at most one sparkle every two beats per lane, generous window, no miss feedback, no score. The lane takes 1–2 of the screen's 12-element motion budget (§7); nothing faster than ~600 px/s, no flashes, no screen shake. The catch bell is the move's note one octave up only when that is C6 or lower; otherwise it is the same note with a 0.25 s decay, so nothing shrill ever plays. `sparkle_taps=false` removes the lane, the ring and the instruction line entirely. In calm mode the sparkle appears statically on Pirouette's hand for its window; a tap swaps in a static burst.
 
 ### 5.4 Recital — every fifth workout, or the next stage visit after it
 
-**How it works.** On recital day the strip is unchanged. Get ready works as always; the look is written on today's row. On an on-time recital day Choose a dance shows "Today's dances": the **distinct** dances recorded on the Program's four rehearsal rows (positions 1–4 of Program P, by ordinal; duplicates collapsed by their `moves` snapshot, so 1–4 dances; a position with no row or no snapshot plays Pirouette's choice as it is today). Dance's button reads "Start the recital". `startDance` sets `recital_program = P` and `danced_at` in the same update, so the recital counts as performed only when it has started. The recital has a fixed shape regardless of content, so even one distinct dance is a recognisably bigger show: a static title card "Recital 2" (1.5 s, tap to skip), then each dance introduced by its own title card ("Dance 2 · Little Waltz", 1.5 s, tap to skip), then a **finale**, every unlocked move once in catalog order, ending in the Bow with every earned cat clapping. The earned cats sit in the front-row box and are still during the dances; they sway and clap only during the Bow. Sparkle catch runs if on. The Bow card reads "Recital 2 complete.", shows the poster, and "New on the stage: string lights". Stop is always available and still completes the recital (the row was written at "Start the recital"). On a day when an older recital is ready (§4), Choose a dance is the normal screen with "Recital 1 is ready. It plays first.", and Dance plays the recital, then a title card "Now your dance · Little Waltz", then her dance; her dance is the row's snapshot, so the next Program's poster is right.
+**How it works.** On recital day the strip's third step is the gold star "Recital" (§3.5); otherwise the strip is unchanged. Get ready works as always; the look is written on today's row. On an on-time recital day Choose a dance shows "Today's dances": the **distinct** dances recorded on the Program's four rehearsal rows (positions 1–4 of Program P, by ordinal; duplicates collapsed by their `moves` snapshot, so 1–4 dances; a position with no row or no snapshot plays Pirouette's choice as it is today). Dance's button reads "Start the recital". `startDance` sets `recital_program = P` and `danced_at` in the same update, so the recital counts as performed only when it has started. The recital has a fixed shape regardless of content, so even one distinct dance is a recognisably bigger show: a static title card "Recital 2" (1.5 s, tap to skip), then each dance introduced by its own title card ("Dance 2 · Little Waltz", 1.5 s, tap to skip), then a **finale**, every unlocked move once in catalog order, ending in the Bow with every earned cat clapping. The earned cats sit in the front-row box and are still during the dances; they sway and clap only during the Bow. Sparkle catch runs if on. The Bow card reads "Recital 2 complete.", shows the poster, and "New on the stage: string lights". Stop is always available and still completes the recital (the row was written at "Start the recital"). On a day when an older recital is ready (§4), Choose a dance is the normal screen with "Recital 1 is ready. It plays first.", and Dance plays the recital, then a title card "Now your dance · Little Waltz", then her dance; her dance is the row's snapshot, so the next Program's poster is right.
 
 **Length.** A 6-slot dance at 66 bpm is about 15 s; four distinct dances with title cards are about 70–90 s, plus a finale of about 15 s at four moves. At 12 slots and 56 bpm a dance is about 35 s, so a four-dance recital reaches about 2.5 minutes before a finale of about 30 s; with duplicates collapsed it is usually shorter.
 
-**Poster** (3:4 SVG, derived): the Program's theme colour, Pirouette in the look of the row that performed the recital (for a skipped recital, the look of the Program's last rehearsal row), "Program 2" with the theme name as a subtitle, and one row of move icons per distinct dance from the snapshots. Saved nowhere; rendered from `rehearsals` on the Programs shelf.
+**Poster** (3:4 SVG, derived): the Program's theme colour, Pirouette in the look of the row that performed the recital (for a skipped recital, the look of the Program's last rehearsal row), "Program 2" with the theme name as a subtitle, and one row of move icons per distinct dance from the snapshots. Saved nowhere; rendered from `rehearsals` on the Season map.
 
 **How it evolves.** Longer dances, more costumes and stages, more cats, stacking decorations. Recital 10 is the Season Finale with fireworks and the Season One poster (all ten posters in a grid). Recitals continue every 5 forever.
 
@@ -262,7 +266,7 @@ Sparkle catch is a **layer, not a mode**, and it is **off until Jose turns it on
 
 ## 6. Achievements and unlockables
 
-Rosettes hang on the curtain tie-backs and appear on the Programs shelf. All are derived; none is calendar-shaped; none reads a score; none can be lost. Unearned rosettes are never shown anywhere, so none of them reads as a nudge to change a look she likes. Names say what happened.
+Rosettes hang on the curtain tie-backs and appear on the Season map. All are derived; none is calendar-shaped; none reads a score; none can be lost. Unearned rosettes are never shown anywhere, so none of them reads as a nudge to change a look she likes. Names say what happened.
 
 | Rosette | Trigger (derived from) | Reward |
 |---|---|---|
@@ -293,7 +297,7 @@ Moments: ambient breathing around Pirouette during the dance (count = 6 + `floor
 
 Hard limits regardless of settings: nothing flashes faster than 2 Hz, no white flashes, no screen shake, no parallax, nothing moves faster than ~600 px/s, scale never exceeds 1.15 except Pirouette's own moves, all easing ease-in-out, animate only `transform` and `opacity`, never animated SVG filters.
 
-Calm mode (existing `data-reduced-motion` on `<html>`): the calm block in `globals.css` gains one attribute rule for the rig, `:root[data-reduced-motion] .pir[data-move] * { animation: none }` (matching the attribute form the existing block already uses), followed by the static pose transforms under `:root[data-reduced-motion] .pir[data-move="plie"] .pir-leg-l { … }` and so on for every move, and every new class: `lite-bow`, `lite-curtain-open`, `lite-curtain-close`, `lite-sparkle-drift`, `lite-ring-pulse`, `lite-snowfall`, `lite-petals`, `lite-confetti`, `lite-fireworks`, `lite-notes-float`, `lite-glow`. A dance in calm mode is a slideshow of poses, one per move on the clock; ambient sparkles become three static dots, curtains jump, crossfades are instant, Sparkle catch is a static appear-and-tap.
+Calm mode (existing `data-reduced-motion` on `<html>`): Jose's decision is that Nessa does not need it, so it stays only as the existing kill switch for parents and testing. The calm block in `globals.css` still gains one attribute rule for the rig, `:root[data-reduced-motion] .pir[data-move] * { animation: none }` (matching the attribute form the existing block already uses), and every new class: `lite-bow`, `lite-curtain-open`, `lite-curtain-close`, `lite-sparkle-drift`, `lite-ring-pulse`, `lite-snowfall`, `lite-petals`, `lite-confetti`, `lite-fireworks`, `lite-notes-float`, `lite-glow`, so everything switches off cleanly. The per-move static poses in the move table are **not built**: in calm mode Pirouette stands in her front pose while the move strip advances, ambient sparkles become three static dots, curtains jump, crossfades are instant, and Sparkle catch is a static appear-and-tap. Build the poses only if that decision ever changes.
 
 ### Sound
 
@@ -310,7 +314,7 @@ All synthesized through one shared `getAudioContext()` exported from `src/lib/so
 | Catch bell | Sparkle catch | the move's note +1 octave when the result is ≤ C6, otherwise the same note with 0.25 s decay; sine, 0.4 s decay, gain never above the move note and never above music +3 dB |
 | Final chord | Bow | 1.8 s decay |
 
-Music loops are 8-bar patterns of scheduled oscillators. Every `Song` requires `{ bpm, beatsPerBar }` because the beat clock, sparkle drift and move durations all need both: Music Box (66 bpm, 3/4, triangle + sine one octave up at 0.3, 5 ms attack, 0.8 s decay), Harp Song (60 bpm, 4/4, sine through a 2 kHz low-pass, 1.2 s decay), Silver Bells (72 bpm, 3/4, sine + partial at 2.76×, 1.5 s decay), Rain Piano (56 bpm, 4/4, sparse notes; the filtered-noise bed is later polish), Ocean Waves (60 bpm, 4/4, slow detuned pads), Ballroom Waltz (84 bpm, 3/4). Quiet is no song; the clock runs at 66 bpm. A `Song` may instead point at a small audio file (under 200 KB) with its bpm and meter; the beat clock and everything above work unchanged. Decide after Phase 0 (§9).
+Music loops are 8-bar patterns of scheduled oscillators. Every `Song` requires `{ bpm, beatsPerBar }` because the beat clock, sparkle drift and move durations all need both: Music Box (66 bpm, 3/4, triangle + sine one octave up at 0.3, 5 ms attack, 0.8 s decay), Harp Song (60 bpm, 4/4, sine through a 2 kHz low-pass, 1.2 s decay), Candy Waltz (72 bpm, 3/4, bright triangle melody over a soft sine bass, playful), Silver Bells (72 bpm, 3/4, sine + partial at 2.76×, 1.5 s decay), Rain Piano (56 bpm, 4/4, sparse notes; the filtered-noise bed is later polish), Puddle Hop (80 bpm, 4/4, staccato sine melody with a bouncing bass, the fun one), Ocean Waves (60 bpm, 4/4, slow detuned pads), Ballroom Waltz (84 bpm, 3/4), Carnival Parade (84 bpm, 4/4, a bright march, low-gain square wave through the low-pass). Quiet is no song; the clock runs at 66 bpm. Jose: she does not startle at new sounds and enjoys a fair amount of fun and calming music, so the loops lean richer than a first draft would, and the 2 s tile preview stays. A `Song` may instead point at a small audio file (under 200 KB) with its bpm and meter, so recorded loops Jose picks are welcome; the beat clock and everything above work unchanged. Decide synth vs files after Phase 0 (§9).
 
 Rules: no sound ever plays without a tap; every start and stop is a gain ramp of at least 300 ms (music in 1.5 s, out 1–2 s); no crowd or applause audio; chimes stay louder than music.
 
@@ -322,10 +326,10 @@ Rules: no sound ever plays without a tap; every start and stop is a gain ramp of
 | Music | `music` | on | loops only (Quiet is also a tile in the flow) |
 | Volume | `volume` | soft | master 0.25 soft / 0.5 medium, never higher |
 | Sparkle amount | `sparkle_amount` | lots | lots = 6 + Programs (cap 12) ambient; some = 3, no bursts beyond the catch burst |
-| Sparkle catch | `sparkle_taps` | off | on adds the lane, ring and instruction line; disabled with "from workout 11" until N_max ≥ 11; second lane from 34 |
+| Sparkle catch | `sparkle_taps` | on | off removes the lane, the ring and the instruction line; second lane from 34 |
 | Show caught sparkles | `sparkle_count` | off | on adds "You caught 12 sparkles." to the Bow card, no denominator |
 | Bow showers | `bow_showers` | on | off removes petals, confetti and fireworks at the Bow |
-| Calm mode | `reduced_motion` (exists) | off | every animation off, poses only |
+| Calm mode | `reduced_motion` (exists) | off | every animation off; kept as a kill switch only (Jose: she does not need it) |
 
 ## 8. Data model
 
@@ -365,7 +369,7 @@ alter table settings
   add column music          boolean not null default true,
   add column volume         text    not null default 'soft'  check (volume in ('soft','medium')),
   add column sparkle_amount text    not null default 'lots'  check (sparkle_amount in ('some','lots')),
-  add column sparkle_taps   boolean not null default false,
+  add column sparkle_taps   boolean not null default true,   -- Jose: on from the first evening
   add column sparkle_count  boolean not null default false,
   add column bow_showers    boolean not null default true,
   add column high_water_n   int     not null default 0,   -- highest N ever reached; bumped at Finish, never lowered
@@ -414,15 +418,15 @@ Write rules: `setLook(partial)` upserts today's row and touches only the four lo
 
 *1a (ship first, replaces the Twirl button):* `migration-0001`; full catalog and progress lib with every `unlockAt`, `shipped` and `season`; `music.ts` with Music Box only; `ScheduleStrip` extracted and reused; Today's ending card, slipper states, done state and nav dot; Get ready with Costume, Stage and Music rows (Classic + Swan, Practice Room + Moon Night, Quiet + Music Box + Harp Song; locked tiles with numbers only for shipped items; "New today" banner line; tap-to-Twirl); Choose a dance as the fixed 2×2 tile grid (Pirouette's choice, two presets, "New dance" dimmed without a number); Dance with four moves, curtains, ambient sparkles within the budget, move strip, Stop; Bow with final chord, "Done for today" (persisted `stage_closed_at`, "The stage is closed for today.", "Open the curtains") and "Dance again"; `dances` and `rehearsals` in `backup.mjs`; calm block updated.
 
-*1b (before her 5th workout):* Program line and "Next:" line; Recital (fixed shape with title cards and finale, "Recital N complete.", ready-until-performed, newest only, recital-then-her-dance on a late day); decorations footlights and string lights; cat audience at the Bow; Sparkle style row (Gold + None); "New since last time" banner line; preferences Music, Volume, Sparkle amount, Bow showers.
+*1b (before her 5th workout):* Program line and "Next:" line; the recital-day star on both strips; Recital (fixed shape with title cards and finale, "Recital N complete.", ready-until-performed, newest only, recital-then-her-dance on a late day); decorations footlights and string lights; cat audience at the Bow; Sparkle style row (Gold + None); "New since last time" banner line; the Season map on the Friends tab with all ten theme names and the current Program ringed (posters fill in from Phase 2); preferences Music, Volume, Sparkle amount, Bow showers. Turn the nightly backup schedule on now (Jose wants backups); the workflow skips cleanly while the repository secrets are missing.
 
 Out of Phase 1: editor, posters, rosettes, Sparkle catch, everything unlocking after 10.
 
-**Phase 2 · Choreographer and Programs shelf (1–2 sessions). Ship before her 7th workout; if late, the "New dance" tile simply stays promise-free (no number) and the "Next:" line skips it.**
-In: editor (instruction line, palette, slots, one-tap undo, full-palette glow, auto-name "Dance K" with optional word tiles, "Save this dance?" on leaving, save, put away with "Put it back"); "My dances" row; posters and the Programs shelf with rosettes on the Friends tab (Program 1's poster appears retroactively because it is derived); content through workout 15 (Sauté, Sugar Plum, 8 moves, garlands).
+**Phase 2 · Choreographer and Season map (1–2 sessions). Ship before her 7th workout; if late, the "New dance" tile simply stays promise-free (no number) and the "Next:" line skips it.**
+In: editor (instruction line, palette, slots, one-tap undo, full-palette glow, auto-name "Dance K" with optional word tiles, "Save this dance?" on leaving, save, put away with "Put it back"); "My dances" row; posters and the Season map with rosettes on the Friends tab (Program 1's poster appears retroactively because it is derived); content through workout 15 (Sauté, Sugar Plum, 8 moves, garlands).
 
-**Phase 3 · Sparkle catch (1 session). No unlock deadline: the lane is off until Jose turns it on; ship it before he wants to show her.**
-In: drifting sparkle on the beat clock, ring static until the first catch then pulsing, ±400 ms window, burst and capped bell, fingertip sparkle, floor glow, `sparkles_caught` persisted at the Bow, `sparkle_taps` and `sparkle_count` settings with the "from workout 11" gate, instruction line, calm-mode static variant; second lane behind the gate at 34.
+**Phase 3 · Sparkle catch (1 session). Jose wants it on from the start, so ship it as soon as Phase 2 is in, or before Phase 2 if the 7th-workout deadline allows. Until it ships the Dance step simply has no lane and nothing mentions one; the day it ships, Jose shows her once.**
+In: drifting sparkle on the beat clock, ring static until the first catch then pulsing, ±400 ms window, burst and capped bell, fingertip sparkle, floor glow, `sparkles_caught` persisted at the Bow, `sparkle_taps` (default on) and `sparkle_count` settings, instruction line, calm-mode static variant; second lane as the shipped catalog item at 34.
 
 **Phase 4 · Content drops (ongoing, 20–40 minutes per item, each shipped before its unlock day or left promise-free until it is).**
 Remaining costumes, stages, music loops, sparkle styles, moves (Curtsy, Glide, Big spin), 10 and 12 moves per dance, decorations 20–50, Season One poster and fireworks. No logic changes: catalog rows with `shipped: true`, overlay paths, note patterns, and selectors in the calm block.
@@ -432,27 +436,31 @@ Colourways, stage variants, two loops, two moves, gold decorations, Crown at 97;
 
 **Rule for every phase:** a number she has seen never changes. `unlockAt` is data; an item whose code has not shipped carries no number and is skipped by "Next:", and when the day arrives without it, nothing is announced and nothing is relabeled. An unlock day never arrives with a promise it cannot keep.
 
-## 10. Open questions for Jose
+## 10. Decisions (Jose, 22 October 2026)
 
-Each has a default already chosen above; a "no" is a constant or a setting, not a rewrite.
+The twenty open questions were answered on 22 October 2026, and every section above already reflects the answers. If one changes, change this document first, then the code.
 
-1. **Words.** Does she use "rehearsal", "recital", "Program", "stage", "Get ready", "Choose a dance" the same way, or does she say "show", "practice", "dance", "pick"? Copy strings are centralized to swap.
-2. **Session vs menu.** She asked for all three games. Is one fixed Get ready · Choose a dance · Dance · Bow session right, or would she rather choose which game to play each evening?
-3. **Program length.** Five workouts per Program (about 12 days at 3 a week). Three or four would make recitals more frequent; the unlock table would need re-spacing.
-4. **Numbers.** Keep every number off (default), or turn on "You caught 12 sparkles." on the Bow card?
-5. **Locked tiles.** Visible in place, with "at 13" once shipped (default), or hidden until unlocked, or only the next one shown?
-6. **Get ready layout.** Choice cards with one row per screen (default), or all four rows on one screen for fewer taps?
-7. **Dance names.** Auto "Dance K" with optional word tiles (default), word tiles first, or the keyboard?
-8. **Ending.** Should "Open the curtains" exist for free play after "Done for today" (default), or should the stage stay closed until tomorrow?
-9. **Rest days.** Should saved dances or posters be watchable on a day with no finished workout? Default no, to keep workout → stage literal.
-10. **Recital size and length.** Up to about 2.5 minutes at 12 moves plus a finale, with cats, decorations and bow showers. Too long or too much? Options: cap the recital at the two newest dances, skip the finale, or turn bow showers off.
-11. **Music.** Synthesized music-box and harp timbres, or a few recorded loops Jose picks? Phase 0 decides; the clock works with either. Is a 2 s preview on a music tile welcome or startling? Is a Quiet tile in the row useful?
-12. **Sparkle default.** "lots" (6 growing to 12 ambient) or "some" (3)? Are the 720° and 1080° spins at 220 px comfortable to watch?
-13. **Calm mode.** Does she use it? If yes, test the held-pose dance with her before Phase 2.
-14. **Darker backdrops.** Moon Night, Starry Sky and Seashore are dark inside the stage box on a light page. Fine, or keep every stage light?
-15. **Today's Program line.** Two short rows (circles + "Next: …") under the strip: useful or visual noise?
-16. **Starting count.** Default is `stage_start_on` = the Phase 1a ship date, so the stage starts at 1 and the first visit shows one new thing. Or let her existing workouts carry over (the "New since last time" banner would list several unlocks at once)?
-17. **Recital day strip.** Default keeps four identical steps with the recital inside Dance. Would a visibly different "Recital" step be better for her?
-18. **Backups.** Dances and rehearsals are her creations and cannot be re-derived; the nightly backup schedule is still commented out. Turn it on once repo secrets exist?
-19. **Sparkle catch.** It is off by default and nothing announces it. When Jose wants it, show her once with the instruction line and turn it on in preferences; is the ring staying static until her first catch the right first evening?
-20. **Move names.** Does she know Plié, Arabesque, Sauté and Curtsy, or should the tiles read "Bend", "Reach", "Spin", "Leg up", "Jump"? Keys stay as they are; the display name is a per-move string she will read 6–12 times per dance in the strip.
+| # | Question | Decision | Where it lands |
+|---|---|---|---|
+| 1 | Words | Keep the ballet vocabulary: rehearsal, recital, Program, Get ready, Choose a dance. She takes ballet. | strings everywhere |
+| 2 | Session vs menu | One fixed session. The stage stays locked until today's workout is finished and says so in one sentence. The mini-game must always read as a chapter of the longer story. | §2, §3.0, §4 (Story, Season map) |
+| 3 | Program length | Five workouts. | §4 |
+| 4 | Numbers | None shown. `sparkle_count` stays off. | §7 |
+| 5 | Locked tiles | Visible in place, with the workout number once the item has shipped. | §3.6, §5.1 |
+| 6 | Get ready layout | One row per screen. | §3.6 |
+| 7 | Dance names | Word tiles first; "Dance K" when she skips them. | §5.2 |
+| 8 | After "Done for today" | "Open the curtains" stays for free play. | §3.10 |
+| 9 | Rest days | The stage stays closed; nothing is watchable without a finished workout. | §3.0, §3.11 |
+| 10 | Recital length | The full recital, finale and bow showers included. | §5.4 |
+| 11 | Music | She does not startle at new sounds and enjoys a fair amount of fun and calming music. Nine Season One loops; the 2 s tile preview stays; synth versus recorded loops is decided in Phase 0 by listening on the iPad. | §4.1, §7 |
+| 12 | Sparkle | "lots". Check the 720° and 1080° spins with her on the device in Phase 0. | §7 |
+| 13 | Calm mode | Not needed for her. Kept only as a kill switch; the per-move static poses are not built. | §7 |
+| 14 | Darker backdrops | Keep them. | §5.1 |
+| 15 | Program line on Today | Keep both rows. | §3.0 |
+| 16 | Starting count | `stage_start_on` is the Phase 1a ship date, so the stage starts at 1. The cats keep counting every workout. | §8 |
+| 17 | Recital day | Marked big: the Dance step becomes a larger gold star labelled "Recital" on both strips, and Today reads "Recital 1 today." | §2, §3.0, §3.5, §3.7, §5.4 |
+| 18 | Backups | Wanted. The nightly schedule is on; the job skips cleanly until the repository secrets exist. `dances` and `rehearsals` join the backup table list in Phase 1a. | §9, `.github/workflows/backup.yml` |
+| 19 | Sparkle catch | On from the first evening (`sparkle_taps` default true). Jose shows her once. The ring stays still until her first catch. The second lane unlocks at 34 as an announced item. | §4.1, §5.3, §7, §8, §9 |
+| 20 | Move names | Keep Plié, Arabesque, Sauté, Curtsy and the rest. | §5.2 |
+
+Still to confirm, with her, on the real iPad during Phase 0: whether the big spins (12) are comfortable to watch, and whether the four step names (1) are the words she would use.

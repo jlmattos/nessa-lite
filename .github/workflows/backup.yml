@@ -1,16 +1,16 @@
 name: Nightly backup
 
 # Dumps the Supabase database to backups/latest.json and commits it, the same
-# way lift-lite does. Git history then keeps every night's snapshot.
+# way lift-lite does. Git history then keeps every night's snapshot, which
+# matters here because Nessa's saved dances cannot be rebuilt from anything else.
 #
-# OFF until you want it: the schedule is commented out so the workflow doesn't
-# fail nightly before the secrets exist. To turn it on, add the two repository
-# secrets (Settings → Secrets and variables → Actions): SUPABASE_URL and
-# SUPABASE_SECRET_KEY, then uncomment the schedule block.
+# Needs two repository secrets (Settings → Secrets and variables → Actions):
+# SUPABASE_URL and SUPABASE_SECRET_KEY. Until they exist the job notices and
+# skips, so the schedule can stay on from day one without failing nightly.
 
 on:
-  # schedule:
-  #   - cron: "0 9 * * *" # ~5am ET daily
+  schedule:
+    - cron: "0 9 * * *" # ~5am ET daily
   workflow_dispatch: {}
 
 permissions:
@@ -24,12 +24,26 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
+      - name: Check for secrets
+        id: secrets
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SECRET_KEY" ]; then
+            echo "Repository secrets are not set yet — skipping tonight's backup."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
       - name: Dump database
+        if: steps.secrets.outputs.ready == 'true'
         run: node scripts/backup.mjs --latest
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
       - name: Commit snapshot
+        if: steps.secrets.outputs.ready == 'true'
         run: |
           git config user.name "backup-bot"
           git config user.email "actions@users.noreply.github.com"

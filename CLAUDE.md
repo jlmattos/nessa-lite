@@ -51,7 +51,7 @@ version:
 - **One fixed stage session**, drawn with the same schedule strip as Today:
   Get ready (costume, stage, music, sparkle style) · Choose a dance
   (presets, her saved dances, the editor from workout 7) · Dance (the
-  performance; Sparkle catch is an optional layer Jose turns on) · Bow
+  performance, with the Sparkle catch layer on from the first evening) · Bow
   ("The end.", then "Done for today"). No menu of games.
 - **Everything is derived** from the completed-workout count and the rows
   she creates (`dances`, `rehearsals`), exactly like the cats. Unlocks use a
@@ -62,8 +62,13 @@ version:
 - **Motion budget and sound rules** are in §7 of the doc and are not optional.
 - **Build order** is §9: Phase 0 is an iPad spike of the Pirouette rig and
   one music loop on the real device before anything else ships.
-- **§10 lists twenty open questions for Jose**, each with the default the
-  doc already uses. When Jose answers one, change the doc first, then the code.
+- **Recital day is marked big**: the Dance step becomes a larger gold star
+  labelled "Recital" on both strips (Jose's call).
+- **Calm mode is a kill switch only.** Jose: she does not need it. New
+  animation classes still go in the calm block; per-move static poses are
+  not built.
+- **§10 records Jose's decisions** on the twenty open questions (22 Oct 2026).
+  If one changes, change the doc first, then the code.
 
 The scaffold predates the doc: `/dance` still shows only a Twirl button, and
 none of the §8 tables exist yet. The copy already uses the doc's names
@@ -106,7 +111,8 @@ renders (settings fall back to defaults), but every data query throws.
 - `schema.sql` — run by hand in the Supabase SQL editor. No migration
   runner; add numbered `migration-000N-*.sql` files for schema changes.
 - `scripts/backup.mjs` + `.github/workflows/backup.yml` — nightly snapshot to
-  `backups/latest.json`, schedule commented out until repo secrets exist.
+  `backups/latest.json`. The schedule is on; the job skips cleanly until the
+  repository secrets exist (Jose wants backups).
 - `GAME-DESIGN.md` — the dance game: arc, mini-games, unlocks, build phases.
   Read it before touching anything under `/dance`.
 
@@ -158,6 +164,6 @@ live database.
 ## Privacy
 
 This is a child's personal data. Keep the repository private. The backup
-workflow commits database snapshots into git, exactly as lift-lite does;
-leaving its schedule on or off is Jose's call. Never echo tokens or keys
-into chat, logs, or commits.
+workflow commits database snapshots into git, exactly as lift-lite does, and
+Jose wants it on: her saved dances cannot be rebuilt from anything else.
+Never echo tokens or keys into chat, logs, or commits.
