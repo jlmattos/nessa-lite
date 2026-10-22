@@ -209,8 +209,8 @@ export const PRESET_DANCES: Record<string, { name: string; moves: MoveKey[] }> =
   twirl_song: { name: "Twirl Song", moves: ["reach", "twirl", "arabesque", "twirl"] },
 };
 
-/** Two rows of word tiles for naming a dance (confirmed by Jose). None is a move, preset, loop or item name. */
+/** Two rows of word tiles for naming a dance (confirmed by Jose). None is a move, preset, loop, item or theme name. */
 export const NAME_WORDS: [string[], string[]] = [
-  ["Moon", "Star", "Garden", "Snow", "Rose", "Sunny"],
+  ["Moon", "Star", "Cloud", "River", "Rose", "Sunny"],
   ["Waltz", "Ballet", "Ribbon", "Dream", "Song", "Steps"],
 ];

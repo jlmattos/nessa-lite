@@ -93,9 +93,14 @@ export function slotCount(nMax: number): number {
   return LENGTHS.filter((l) => l.shipped && l.unlockAt <= nMax).reduce((m, l) => Math.max(m, l.slots), BASE_SLOTS);
 }
 
-/** Ambient sparkles during the dance: "lots" grows one per Program, capped at 12; "some" is a fixed 3. */
-export function ambientSparkles(n: number, amount: "some" | "lots"): number {
-  return amount === "some" ? 3 : Math.min(12, 6 + Math.floor(n / WORKOUTS_PER_PROGRAM));
+/**
+ * Ambient sparkles during the dance: "lots" grows one per Program, capped at 12
+ * before the motion budget (12 moving elements minus stage weather minus
+ * Sparkle catch lanes), never below 3; "some" is a fixed 3.
+ */
+export function ambientSparkles(n: number, amount: "some" | "lots", weather = 0, lanes = 0): number {
+  if (amount === "some") return 3;
+  return Math.max(3, Math.min(6 + Math.floor(n / WORKOUTS_PER_PROGRAM), 12 - weather - lanes));
 }
 
 /** Pirouette's choice: every shipped, unlocked move once, in catalog order, up to the slot count. */

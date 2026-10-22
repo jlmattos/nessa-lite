@@ -31,6 +31,11 @@
   --radius-card: 1.25rem;
 }
 
+/* Two quick taps on a button must restart a move, not zoom the page (iPad Safari). */
+@layer base {
+  button, a { touch-action: manipulation; }
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
@@ -128,7 +133,7 @@ html[data-reduced-motion="true"] .animate-lite-sparkle {
    Safari ignores 3D transforms on inner SVG elements. */
 .pir-wrap { display: inline-block; perspective: 600px; line-height: 0; }
 .pir-wrap.pir-sway { animation: lite-sway 2.6s ease-in-out infinite; transform-origin: 50% 100%; }
-.pir { --beat: 0.909s; transform-style: preserve-3d; }
+.pir { --beat: 0.909s; overflow: visible; }  /* the Bow leans past the viewBox edge; never clip her */
 .pir g[class^="pir-"] { transform-box: view-box; }
 .pir-leg-l { transform-origin: 42px 112px; }  /* standing leg pivots at its foot */
 .pir-leg-r { transform-origin: 56px 94px; }   /* pointed leg pivots at the hip */

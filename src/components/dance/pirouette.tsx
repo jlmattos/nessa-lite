@@ -55,7 +55,7 @@ export function Pirouette({
         <g className="pir-leg-l">
           <path d="M44 94 L42 112" stroke={CREAM} strokeWidth="10" strokeLinecap="round" />
           <ellipse cx="42" cy="113" rx="7.5" ry="4.5" style={{ fill: "var(--leotard)" }} />
-          <path d="M39 108 L45 102 M45 108 L39 102" stroke="var(--bow)" strokeWidth="1.4" />
+          <path d="M39 108 L45 102 M45 108 L39 102" style={{ stroke: "var(--bow)" }} strokeWidth="1.4" />
         </g>
         {/* pointed leg (pivots at the hip) */}
         <g className="pir-leg-r">

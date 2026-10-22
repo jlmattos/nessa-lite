@@ -11,20 +11,23 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { BOW_BEATS, BOW_CHORD, MOVE_BY_KEY, type MoveKey } from "@/lib/dance-content";
 import { QUIET, sequencer, type Song } from "@/lib/music";
-import { playChord, playNote } from "@/lib/sound";
+import { getAudioContext, masterOut, playChord, playNote } from "@/lib/sound";
 
 export type PlayerState = "idle" | "playing" | "bowing" | "done";
 
-function noteFor(key: MoveKey) {
+function noteFor(key: MoveKey, at?: number, out?: AudioNode) {
   const m = MOVE_BY_KEY[key];
-  playNote(m.midi);
-  if (m.midi2 != null) playNote(m.midi2, { peak: 0.22 });
+  playNote(m.midi, { at, out });
+  if (m.midi2 != null) playNote(m.midi2, { at, out, peak: 0.28 });
 }
 
 export function useDancePlayer(rigRef: RefObject<HTMLDivElement | null>, opts: { sound: boolean }) {
   const [state, setState] = useState<PlayerState>("idle");
   const [currentIndex, setCurrentIndex] = useState<number | null>(null);
   const unsubRef = useRef<(() => void) | null>(null);
+  const stallRef = useRef<(() => void) | null>(null);
+  /** The dance's own output, so Stop can fade move notes and the chord too. */
+  const outRef = useRef<GainNode | null>(null);
   const soundRef = useRef(opts.sound);
   soundRef.current = opts.sound;
 
@@ -50,16 +53,30 @@ export function useDancePlayer(rigRef: RefObject<HTMLDivElement | null>, opts: {
     [svg]
   );
 
+  const releaseOut = useCallback((fadeSec: number) => {
+    const out = outRef.current;
+    outRef.current = null;
+    const ac = out?.context;
+    if (!out || !ac) return;
+    const now = ac.currentTime;
+    out.gain.setValueAtTime(out.gain.value, now);
+    out.gain.linearRampToValueAtTime(0, now + Math.max(fadeSec, 0.02));
+    window.setTimeout(() => out.disconnect(), fadeSec * 1000 + 60);
+  }, []);
+
   const stop = useCallback(
     (fadeSec = 1) => {
       unsubRef.current?.();
       unsubRef.current = null;
+      stallRef.current?.();
+      stallRef.current = null;
       sequencer.stop(fadeSec);
+      releaseOut(fadeSec);
       setMove(null);
       setCurrentIndex(null);
       setState("idle");
     },
-    [setMove]
+    [setMove, releaseOut]
   );
 
   /** One move, right now, with its note — the Twirl button, editor previews. */
@@ -82,8 +99,20 @@ export function useDancePlayer(rigRef: RefObject<HTMLDivElement | null>, opts: {
       if (moves.length === 0) return false;
       const bpm = song?.bpm ?? bpmIfQuiet;
       setTempo(bpm);
-      const started = song ? sequencer.start(song) : sequencer.start(QUIET, { music: false, bpm });
+      // The song obeys the sound setting too; the clock runs either way.
+      const started = song
+        ? sequencer.start(song, { music: soundRef.current })
+        : sequencer.start(QUIET, { music: false, bpm });
       if (!started) return false;
+      const ac = getAudioContext();
+      const master = masterOut();
+      if (ac && master) {
+        const out = ac.createGain();
+        out.connect(master);
+        outRef.current = out;
+      }
+      // If the context never starts running (no gesture, interrupted), come back to idle.
+      stallRef.current = sequencer.onStall(() => stop(0));
 
       const starts: number[] = [];
       let b = 0;
@@ -95,32 +124,36 @@ export function useDancePlayer(rigRef: RefObject<HTMLDivElement | null>, opts: {
       const doneAt = b + BOW_BEATS;
 
       setState("playing");
-      unsubRef.current = sequencer.onBeat((beat) => {
+      unsubRef.current = sequencer.onBeat((beat, time) => {
+        const out = outRef.current ?? undefined;
         const i = starts.indexOf(beat);
         if (i >= 0) {
           setCurrentIndex(i);
           setMove(moves[i]);
-          if (soundRef.current) noteFor(moves[i]);
+          if (soundRef.current) noteFor(moves[i], time, out); // on the audio clock, with the music
           return;
         }
         if (beat === bowAt) {
           setCurrentIndex(null);
           setState("bowing");
           setMove("bow");
-          if (soundRef.current) playChord(BOW_CHORD);
+          if (soundRef.current) playChord(BOW_CHORD, { at: time, out });
           return;
         }
         if (beat >= doneAt) {
           unsubRef.current?.();
           unsubRef.current = null;
+          stallRef.current?.();
+          stallRef.current = null;
           sequencer.stop(1);
+          releaseOut(2); // let the chord's tail ring out
           setMove(null);
           setState("done");
         }
       });
       return true;
     },
-    [stop, setMove, setTempo]
+    [stop, setMove, setTempo, releaseOut]
   );
 
   // The tab going to the background stops everything; so does unmounting.

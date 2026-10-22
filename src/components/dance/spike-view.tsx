@@ -47,7 +47,7 @@ export function SpikeView() {
           <div className="absolute inset-y-0 left-0 w-7 bg-accent/60 rounded-r-2xl" aria-hidden />
           <div className="absolute inset-y-0 right-0 w-7 bg-accent/60 rounded-l-2xl" aria-hidden />
           <div className="absolute bottom-0 inset-x-7 h-6 bg-line/70 rounded-t-[50%]" aria-hidden />
-          <Pirouette ref={rig} size={size} dancing={busy || musicOnly} />
+          <Pirouette ref={rig} size={size} dancing={player.state !== "idle" || musicOnly} />
           <p className="mt-3 font-semibold text-lg h-7">
             {player.state === "bowing" ? "Bow" : currentName ?? (player.state === "done" ? "The end." : "Pirouette")}
           </p>
@@ -123,7 +123,7 @@ export function SpikeView() {
       {/* What to look for */}
       <Card title="Checklist for the iPad">
         <ol className="list-decimal pl-5 space-y-1.5 text-sm">
-          <li>Tap any move first. Does the note play? (Audio needs one tap before it can start.)</li>
+          <li>Tap any move first. Does the note play? Audio needs one tap before it can start. If nothing plays, check the iPad isn’t muted in Control Center and the volume is up: this kind of sound obeys the mute switch even when videos don’t.</li>
           <li>Twirl and Big spin at 220 px: are the spins smooth and comfortable to watch? Try 84 bpm (fastest) and 56 bpm.</li>
           <li>Plié, Reach, Arabesque: do the legs and arms pivot at the right spots, with no jumping?</li>
           <li>Little Waltz with Music Box: do moves land on the beat? Does the loop repeat without a hiccup?</li>

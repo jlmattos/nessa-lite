@@ -14,7 +14,7 @@ export type Volume = keyof typeof VOLUME;
 export function getAudioContext(): AudioContext | null {
   if (typeof window === "undefined") return null;
   try {
-    if (!ctx) {
+    if (!ctx || ctx.state === "closed") {
       ctx = new AudioContext();
       master = ctx.createGain();
       master.gain.value = VOLUME.soft;
@@ -23,11 +23,18 @@ export function getAudioContext(): AudioContext | null {
       lowpass.frequency.value = 6000;
       master.connect(lowpass).connect(ctx.destination);
     }
-    if (ctx.state === "suspended") void ctx.resume();
+    // iPadOS reports "interrupted" (not "suspended") after an app switch, Siri or
+    // a call, and does not reliably auto-resume: resume on anything but running.
+    if (ctx.state !== "running") void ctx.resume().catch(() => {});
     return ctx;
   } catch {
     return null;
   }
+}
+
+/** The existing context without creating or resuming one (for stop paths outside a gesture). */
+export function peekAudioContext(): AudioContext | null {
+  return ctx;
 }
 
 /** The node every voice connects to. Null when audio is unavailable. */
@@ -89,19 +96,29 @@ export function playFinish() {
   [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(ac, out, f, t + i * 0.16, 1.2, 0.36));
 }
 
-/** A single move note (pentatonic, 0.5 s decay) — editor taps and each move start. */
-export function playNote(midi: number, opts: { dur?: number; peak?: number } = {}) {
+export type NoteOpts = {
+  dur?: number;
+  peak?: number;
+  /** Audio-clock time to start at (schedule on the beat); defaults to now. */
+  at?: number;
+  /** Where to connect (a player's own gain); defaults to the master. */
+  out?: AudioNode;
+};
+
+/** A single move note (pentatonic, 0.5 s decay) — editor taps and each move start. Sits above the music. */
+export function playNote(midi: number, opts: NoteOpts = {}) {
   const ac = getAudioContext();
-  const out = masterOut();
+  const out = opts.out ?? masterOut();
   if (!ac || !out) return;
-  tone(ac, out, midiToHz(midi), ac.currentTime, opts.dur ?? 0.5, opts.peak ?? 0.3);
+  const at = Math.max(opts.at ?? ac.currentTime, ac.currentTime);
+  tone(ac, out, midiToHz(midi), at, opts.dur ?? 0.5, opts.peak ?? 0.4);
 }
 
 /** The final chord at the Bow: every note together, 1.8 s decay. */
-export function playChord(midis: number[], dur = 1.8) {
+export function playChord(midis: number[], opts: NoteOpts = {}) {
   const ac = getAudioContext();
-  const out = masterOut();
+  const out = opts.out ?? masterOut();
   if (!ac || !out) return;
-  const t = ac.currentTime;
-  for (const m of midis) tone(ac, out, midiToHz(m), t, dur, 0.22, "sine", 0.04);
+  const at = Math.max(opts.at ?? ac.currentTime, ac.currentTime);
+  for (const m of midis) tone(ac, out, midiToHz(m), at, opts.dur ?? 1.8, opts.peak ?? 0.22, "sine", 0.04);
 }

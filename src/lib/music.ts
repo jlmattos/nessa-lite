@@ -5,7 +5,7 @@
  * drift apart. With music off (or the Quiet tile) the same clock runs
  * silently. Everything plays through the master in sound.ts.
  */
-import { getAudioContext, masterOut, midiToHz } from "@/lib/sound";
+import { getAudioContext, masterOut, midiToHz, peekAudioContext } from "@/lib/sound";
 
 export type Voice = "box" | "square" | "harp";
 export type SongNote = { beat: number; midi: number; gain?: number };
@@ -97,8 +97,10 @@ export const QUIET: Song = { key: "quiet", name: "Quiet", bpm: 66, beatsPerBar: 
 
 export const SONGS: Record<string, Song> = { music_box: MUSIC_BOX, harp_song: HARP_SONG, carnival_parade: CARNIVAL_PARADE, quiet: QUIET };
 
-const LOOKAHEAD_SEC = 0.1;
+const LOOKAHEAD_SEC = 0.2; // generous: each beat also forces a reflow and a React render
 const TICK_MS = 25;
+const FADE_IN_SEC = 0.15;
+const STALL_MS = 1200; // a context that never reaches "running" after a gesture
 
 class Sequencer {
   private song: Song | null = null;
@@ -108,8 +110,12 @@ class Sequencer {
   private bpm = 66;
   private music = true;
   private gain: GainNode | null = null;
-  private listeners = new Set<(beat: number) => void>();
+  private listeners = new Set<(beat: number, time: number) => void>();
+  private stallListeners = new Set<() => void>();
   private pending = new Set<number>();
+  private previewTimer: number | null = null;
+  private startedAt = 0;      // audio-clock time of start()
+  private startedWall = 0;    // performance.now() at start(), for the stall guard
 
   get isPlaying() {
     return this.timer !== null;
@@ -129,10 +135,13 @@ class Sequencer {
     this.bpm = opts.bpm ?? song.bpm;
     this.music = opts.music ?? true;
     this.beatIndex = 0;
-    this.nextBeatTime = ac.currentTime + 0.12;
+    this.startedAt = ac.currentTime;
+    this.startedWall = performance.now();
+    // A short swell so the downbeat is heard; the clock starts after it.
+    this.nextBeatTime = ac.currentTime + FADE_IN_SEC + 0.05;
     const gain = ac.createGain();
     gain.gain.setValueAtTime(0, ac.currentTime);
-    gain.gain.linearRampToValueAtTime(1, ac.currentTime + 1.5); // music fades in over 1.5 s
+    gain.gain.linearRampToValueAtTime(1, ac.currentTime + FADE_IN_SEC);
     gain.connect(out);
     this.gain = gain;
     this.timer = window.setInterval(() => this.tick(), TICK_MS);
@@ -140,44 +149,77 @@ class Sequencer {
     return true;
   }
 
-  /** Fade the music out (default 1 s) and stop the clock. Safe to call twice. */
+  /** Fade the music out (default 1 s) and stop the clock. Safe to call twice, and outside a gesture. */
   stop(fadeSec = 1) {
+    if (this.previewTimer !== null) {
+      clearTimeout(this.previewTimer);
+      this.previewTimer = null;
+    }
     if (this.timer !== null) {
       clearInterval(this.timer);
       this.timer = null;
     }
     for (const id of this.pending) clearTimeout(id);
     this.pending.clear();
-    const ac = getAudioContext();
+    const ac = peekAudioContext();
     const gain = this.gain;
     if (gain && ac) {
       const fade = Math.max(fadeSec, 0.02);
-      gain.gain.cancelScheduledValues(ac.currentTime);
-      gain.gain.setValueAtTime(gain.gain.value, ac.currentTime);
-      gain.gain.linearRampToValueAtTime(0, ac.currentTime + fade);
+      const now = ac.currentTime;
+      const p = gain.gain;
+      // Hold the current value, then ramp — never cancel into a snap-to-zero mid fade-in.
+      if (typeof p.cancelAndHoldAtTime === "function") {
+        p.cancelAndHoldAtTime(now);
+      } else {
+        const v = Math.min(1, Math.max(0, (now - this.startedAt) / FADE_IN_SEC));
+        p.cancelScheduledValues(now);
+        p.setValueAtTime(v, now);
+      }
+      p.linearRampToValueAtTime(0, now + fade);
       window.setTimeout(() => gain.disconnect(), fade * 1000 + 60);
     }
     this.gain = null;
     this.song = null;
   }
 
-  /** Called once per beat, on the beat (visuals subscribe here). */
-  onBeat(cb: (beat: number) => void): () => void {
+  /** Called when the clock had to stop itself (the context never started running). */
+  onStall(cb: () => void): () => void {
+    this.stallListeners.add(cb);
+    return () => {
+      this.stallListeners.delete(cb);
+    };
+  }
+
+  /** Called once per beat, on the beat, with the beat's audio-clock time so notes can be scheduled exactly. */
+  onBeat(cb: (beat: number, time: number) => void): () => void {
     this.listeners.add(cb);
     return () => {
       this.listeners.delete(cb);
     };
   }
 
-  /** Two seconds of a song, for a music tile tap. */
+  /** Two seconds of a song, for a music tile tap. One preview at a time; a new start cancels it. */
   preview(song: Song, ms = 2000) {
     if (!this.start(song)) return;
-    window.setTimeout(() => this.stop(0.3), ms);
+    this.previewTimer = window.setTimeout(() => {
+      this.previewTimer = null;
+      this.stop(0.3);
+    }, ms);
   }
 
   private tick() {
-    const ac = getAudioContext();
+    const ac = peekAudioContext();
     if (!ac || !this.song) return;
+    if (ac.state !== "running") {
+      // The gesture should have started the clock; if it never does, give up cleanly.
+      if (performance.now() - this.startedWall > STALL_MS) {
+        this.stop(0);
+        for (const l of this.stallListeners) l();
+      }
+      return;
+    }
+    // Visuals should land when the sound reaches the ear, not when it is rendered.
+    const latency = (ac.baseLatency ?? 0) + (ac.outputLatency ?? 0);
     const spb = this.secondsPerBeat;
     const total = this.song.beatsPerBar * this.song.bars;
     while (this.nextBeatTime < ac.currentTime + LOOKAHEAD_SEC) {
@@ -189,10 +231,10 @@ class Sequencer {
           if (n.beat >= pos && n.beat < pos + 1) this.voice(ac, this.gain, n, time + (n.beat - pos) * spb);
         }
       }
-      const delay = Math.max(0, (time - ac.currentTime) * 1000);
+      const delay = Math.max(0, (time + latency - ac.currentTime) * 1000);
       const id = window.setTimeout(() => {
         this.pending.delete(id);
-        for (const l of this.listeners) l(beat);
+        for (const l of this.listeners) l(beat, time);
       }, delay);
       this.pending.add(id);
       this.beatIndex += 1;
@@ -206,10 +248,11 @@ class Sequencer {
    * the brightest sound in the set — the master low-pass keeps it soft.
    * "harp": sine through a 2 kHz low-pass with a 1.2 s decay.
    */
-  private voice(ac: AudioContext, out: AudioNode, n: SongNote, start: number) {
+  private voice(ac: AudioContext, out: AudioNode, n: SongNote, scheduled: number) {
     const f = midiToHz(n.midi);
     const g = n.gain ?? 0.3;
     const voice = this.song?.voice ?? "box";
+    const start = Math.max(scheduled, ac.currentTime + 0.002); // a late tick still gets its attack
     const env = (osc: OscillatorNode, peak: number, decay: number) => {
       const gain = ac.createGain();
       gain.gain.setValueAtTime(0, start);
