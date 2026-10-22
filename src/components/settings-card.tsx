@@ -4,15 +4,20 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Settings } from "@/lib/settings";
 import { updateSettings } from "@/actions/settings";
+import { setVolume } from "@/lib/sound";
 
-/** Two switches, plain words. Jose or Nessa can flip them; they apply everywhere. */
+/**
+ * The preferences card (GAME-DESIGN.md §7 Controls), in the doc's order.
+ * Plain words, two-state switches and two-way choices. Jose or Nessa can
+ * change them; they apply everywhere. "Show caught sparkles" arrives in Phase 3.
+ */
 export function SettingsCard({ settings }: { settings: Settings }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  function toggle(key: keyof Settings) {
+  function save(patch: Partial<Settings>) {
     startTransition(async () => {
-      await updateSettings(key === "sound" ? { sound: !settings.sound } : { reducedMotion: !settings.reducedMotion });
+      await updateSettings(patch);
       router.refresh();
     });
   }
@@ -22,18 +27,53 @@ export function SettingsCard({ settings }: { settings: Settings }) {
       <p className="text-xs uppercase tracking-wider text-muted font-semibold">How the app feels</p>
       <div className="mt-2 divide-y divide-line/70">
         <Toggle
-          label="Soft sounds"
-          sub="A little chime when you tap Done, and a chord when you finish"
+          label="Sounds"
+          sub="Chimes when you tap Done, and the notes Pirouette dances to"
           on={settings.sound}
           busy={isPending}
-          onClick={() => toggle("sound")}
+          onClick={() => save({ sound: !settings.sound })}
+        />
+        <Toggle
+          label="Music"
+          sub="The music loops on the stage. Quiet is also a tile you can pick."
+          on={settings.music}
+          busy={isPending}
+          onClick={() => save({ music: !settings.music })}
+        />
+        <Choice
+          label="Volume"
+          value={settings.volume}
+          options={[["soft", "soft"], ["medium", "medium"]]}
+          busy={isPending}
+          onPick={(v) => { setVolume(v); save({ volume: v }); }}
+        />
+        <Choice
+          label="Sparkle amount"
+          value={settings.sparkleAmount}
+          options={[["lots", "lots"], ["some", "some"]]}
+          busy={isPending}
+          onPick={(v) => save({ sparkleAmount: v })}
+        />
+        <Toggle
+          label="Sparkle catch"
+          sub="A sparkle floats to Pirouette during the dance; tap when it reaches her. You can also just watch."
+          on={settings.sparkleTaps}
+          busy={isPending}
+          onClick={() => save({ sparkleTaps: !settings.sparkleTaps })}
+        />
+        <Toggle
+          label="Bow showers"
+          sub="Petals, confetti and fireworks at the bow, once the stage has earned them"
+          on={settings.bowShowers}
+          busy={isPending}
+          onClick={() => save({ bowShowers: !settings.bowShowers })}
         />
         <Toggle
           label="Calm mode"
           sub="Turns off the moving things and sparkles"
           on={settings.reducedMotion}
           busy={isPending}
-          onClick={() => toggle("reducedMotion")}
+          onClick={() => save({ reducedMotion: !settings.reducedMotion })}
         />
       </div>
     </div>
@@ -62,5 +102,33 @@ function Toggle({ label, sub, on, busy, onClick }: { label: string; sub: string;
         />
       </span>
     </button>
+  );
+}
+
+function Choice<T extends string>({
+  label, value, options, busy, onPick,
+}: {
+  label: string; value: T; options: [T, string][]; busy: boolean; onPick: (v: T) => void;
+}) {
+  return (
+    <div className="flex items-center gap-3 py-3">
+      <p className="flex-1 font-medium">{label}</p>
+      <div className="flex gap-1.5" role="radiogroup" aria-label={label}>
+        {options.map(([v, text]) => (
+          <button
+            key={v}
+            role="radio"
+            aria-checked={value === v}
+            disabled={busy}
+            onClick={() => onPick(v)}
+            className={`rounded-full px-3 py-1.5 text-sm font-medium border disabled:opacity-60 ${
+              value === v ? "bg-accent text-white border-accent" : "bg-surface text-muted border-line"
+            }`}
+          >
+            {text}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
