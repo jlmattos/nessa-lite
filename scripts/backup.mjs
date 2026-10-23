@@ -16,15 +16,22 @@ function fromEnvLocal(name) {
   return m ? m[1].trim() : null;
 }
 
-// Reduce a pasted API address (…/rest/v1) or dashboard link to the project's base address.
+// Reduce a pasted address to the project's base address, the same way
+// normalizeSupabaseUrl in src/lib/db.ts does.
 function normalize(raw) {
   if (!raw) return raw;
   const value = raw.trim().replace(/^["']|["']$/g, "");
   try {
     const u = new URL(value);
-    if (u.hostname.endsWith(".supabase.co")) return u.origin;
+    const host = u.hostname.match(/(?:^|\.)([a-z0-9]+)\.supabase\.co$/)?.[1];
+    if (host) return `https://${host}.supabase.co`;
     const ref = u.pathname.match(/\/project\/([a-z0-9]{20})/)?.[1];
-    return ref ? `https://${ref}.supabase.co` : u.origin;
+    if (ref) return `https://${ref}.supabase.co`;
+    if (u.protocol === "http:" || u.protocol === "https:") {
+      const base = u.pathname.replace(/\/(rest|auth|storage|realtime|functions)\/v1(\/.*)?$/, "").replace(/\/+$/, "");
+      return `${u.origin}${base}`;
+    }
+    return value;
   } catch {
     return value;
   }
@@ -39,7 +46,9 @@ if (!url || !key) {
   process.exit(1);
 }
 
-const TABLES = ["movements", "routines", "routine_movements", "workouts", "movement_completions", "settings"];
+// FK order, so a restore can insert table by table. dances and rehearsals are hers:
+// saved dances and every evening on the stage cannot be rebuilt from anything else.
+const TABLES = ["movements", "routines", "routine_movements", "workouts", "movement_completions", "settings", "dances", "rehearsals"];
 
 const PAGE = 1000;
 async function dumpTable(table) {

@@ -40,7 +40,6 @@ export type TodayData = {
   workout: { id: string; routineName: string | null; completedAt: string | null } | null;
   /** Today's visual schedule, in order. Empty when no workout is open. */
   movements: TodayMovement[];
-  /** Rotation suggestion when no workout exists yet. */
   /** Rotation suggestion when no workout exists yet, with its steps for the schedule strip. */
   suggestedRoutine: {
     id: string;

@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import type { StageData, Look } from "@/actions/dance";
 import { setLook } from "@/actions/dance";
 import { Pirouette } from "@/components/dance/pirouette";
+import { StageBox } from "@/components/dance/stage";
 import { useDancePlayer } from "@/lib/dance-player";
 import { COSTUMES, STAGES, MUSIC, SPARKLES, QUIET_KEY, NONE_KEY, type CatalogItem } from "@/lib/dance-content";
 import { SONGS, sequencer } from "@/lib/music";
@@ -15,21 +16,29 @@ const ROW_TITLE: Record<RowKind, string> = { costume: "Costume", stage: "Stage",
 
 /**
  * Step 1: the dress rehearsal (GAME-DESIGN.md §3.6, §5.1). Pirouette in her
- * last look, a quiet banner, and four choice cards. A card opens its row as
- * its own screen. Nothing is required: "Next" is always enabled.
+ * last look on her chosen stage, a quiet banner, and four choice cards. A card
+ * opens its row as its own screen. Nothing is required: "Next" is always enabled.
  */
 export function GetReady({
   data,
   look,
+  decorations,
   onLook,
   onNext,
 }: {
   data: StageData;
   look: Look;
+  /** Tonight's decorations, frozen at open. */
+  decorations: string[];
   onLook: (patch: Partial<Look>) => void;
   onNext: () => void;
 }) {
   const [row, setRow] = useState<RowKind | null>(null);
+  // Frozen when the step opens: the first pick writes today's row, and the banner must not vanish under her.
+  const [banner] = useState(() => ({
+    today: data.bannerToday,
+    since: data.hasRowToday ? [] : data.bannerSince,
+  }));
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const rig = useRef<HTMLDivElement>(null);
@@ -74,28 +83,25 @@ export function GetReady({
 
   return (
     <div className="space-y-3">
-      <div className="rounded-[1.25rem] bg-surface border border-line px-4 pt-5 pb-4 flex flex-col items-center">
-        <Pirouette
-          ref={rig}
-          size={220}
-          costume={look.costume}
-          sway={!calm}
-          onTap={() => { setVolume(data.settings.volume); player.playMove("twirl"); }}
-        />
-        <p className="mt-2 text-xs text-muted">{musicName}</p>
+      <div>
+        <StageBox stageKey={look.stage} curtains="open" decorations={decorations}>
+          <Pirouette
+            ref={rig}
+            size={220}
+            costume={look.costume}
+            sway={!calm}
+            onTap={() => { setVolume(data.settings.volume); player.playMove("twirl"); }}
+          />
+        </StageBox>
+        <p className="mt-1 text-xs text-muted text-center">{musicName}</p>
       </div>
 
-      {(data.bannerToday || data.bannerSince.length > 0) && !data.hasRowToday && (
+      {(banner.today || banner.since.length > 0) && (
         <div className="rounded-[1.25rem] bg-accent-soft/60 border border-accent/40 px-4 py-3 text-sm">
-          {data.bannerToday && <p className="font-medium">{data.bannerToday}</p>}
-          {data.bannerSince.length > 0 && (
-            <p className="text-muted">New since last time: {data.bannerSince.join(" · ")}</p>
+          {banner.today && <p className="font-medium">{banner.today}</p>}
+          {banner.since.length > 0 && (
+            <p className="text-muted">New since last time: {banner.since.join(" · ")}</p>
           )}
-        </div>
-      )}
-      {data.bannerToday && data.hasRowToday && (
-        <div className="rounded-[1.25rem] bg-accent-soft/60 border border-accent/40 px-4 py-3 text-sm">
-          <p className="font-medium">{data.bannerToday}</p>
         </div>
       )}
 

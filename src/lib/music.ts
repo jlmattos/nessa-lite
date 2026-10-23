@@ -101,7 +101,7 @@ const LOOKAHEAD_SEC = 0.2; // generous: each beat also forces a reflow and a Rea
 const TICK_MS = 25;
 const FADE_IN_SEC = 1.5;      // a dance: the music eases in (§3.8)
 const PREVIEW_FADE_SEC = 0.3; // a tile preview: every start is a ramp of at least 300 ms
-const STALL_MS = 1200; // a context that never reaches "running" after a gesture
+const STALL_MS = 1200; // a context that never reaches "running" after a gesture, or stops running for this long
 
 class Sequencer {
   private song: Song | null = null;
@@ -113,11 +113,14 @@ class Sequencer {
   private gain: GainNode | null = null;
   private listeners = new Set<(beat: number, time: number) => void>();
   private stallListeners = new Set<() => void>();
+  private interruptListeners = new Set<() => void>();
   private pending = new Set<number>();
   private previewTimer: number | null = null;
   private startedAt = 0;      // audio-clock time of start()
   private startedWall = 0;    // performance.now() at start(), for the stall guard
   private fadeIn = FADE_IN_SEC;
+  private ran = false;         // the context has run since start(): a later pause is an interruption, not a failed start
+  private pausedWall: number | null = null; // performance.now() when a running clock stopped running
 
   get isPlaying() {
     return this.timer !== null;
@@ -132,7 +135,8 @@ class Sequencer {
     const ac = getAudioContext();
     const out = masterOut();
     if (!ac || !out) return false;
-    this.stop(0);
+    // A loop still playing (a tile preview) fades out on its own node while the new one fades in.
+    this.stop(this.gain ? PREVIEW_FADE_SEC : 0);
     this.song = song;
     this.bpm = opts.bpm ?? song.bpm;
     this.music = opts.music ?? true;
@@ -140,6 +144,8 @@ class Sequencer {
     this.startedAt = ac.currentTime;
     this.startedWall = performance.now();
     this.fadeIn = opts.fadeIn ?? FADE_IN_SEC;
+    this.ran = false;
+    this.pausedWall = null;
     this.nextBeatTime = ac.currentTime + 0.12;
     const gain = ac.createGain();
     gain.gain.setValueAtTime(0, ac.currentTime);
@@ -192,6 +198,17 @@ class Sequencer {
     };
   }
 
+  /**
+   * Called when a clock that was running stopped running for good (iPadOS
+   * "interrupted": Siri, an alarm, a call) while the page stayed visible.
+   */
+  onInterrupt(cb: () => void): () => void {
+    this.interruptListeners.add(cb);
+    return () => {
+      this.interruptListeners.delete(cb);
+    };
+  }
+
   /** Called once per beat, on the beat, with the beat's audio-clock time so notes can be scheduled exactly. */
   onBeat(cb: (beat: number, time: number) => void): () => void {
     this.listeners.add(cb);
@@ -213,13 +230,25 @@ class Sequencer {
     const ac = peekAudioContext();
     if (!ac || !this.song) return;
     if (ac.state !== "running") {
-      // The gesture should have started the clock; if it never does, give up cleanly.
-      if (performance.now() - this.startedWall > STALL_MS) {
-        this.stop(0);
-        for (const l of this.stallListeners) l();
+      const now = performance.now();
+      if (!this.ran) {
+        // The gesture should have started the clock; if it never does, give up cleanly.
+        if (now - this.startedWall > STALL_MS) {
+          this.stop(0);
+          for (const l of this.stallListeners) l();
+        }
+        return;
+      }
+      // It was running and paused: a short blip resumes on its own; a long one ends the dance.
+      this.pausedWall ??= now;
+      if (now - this.pausedWall > STALL_MS) {
+        this.stop(0.3);
+        for (const l of this.interruptListeners) l();
       }
       return;
     }
+    this.ran = true;
+    this.pausedWall = null;
     // Visuals should land when the sound reaches the ear, not when it is rendered.
     const latency = (ac.baseLatency ?? 0) + (ac.outputLatency ?? 0);
     const spb = this.secondsPerBeat;

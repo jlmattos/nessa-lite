@@ -93,12 +93,14 @@ export function TodayView({ data }: { data: TodayData }) {
             }
           />
         )}
+        {stage && <ProgramLineView line={stage.programLine} />}
         {data.suggestedRoutine && !pickRoutine && (
           <Card className="text-center py-8 px-6">
             <p className="text-xs uppercase tracking-wider text-muted font-semibold">Up next</p>
             <p className="text-2xl font-bold mt-1">{data.suggestedRoutine.name}</p>
             <p className="text-sm text-muted mt-1">
-              {data.suggestedRoutine.movementCount} movement{data.suggestedRoutine.movementCount !== 1 ? "s" : ""}, then {recitalDay ? "the recital" : "a dance"} with Pirouette 🩰
+              {data.suggestedRoutine.movementCount} movement{data.suggestedRoutine.movementCount !== 1 ? "s" : ""}, then {recitalDay ? "the recital" : "a dance"} with Pirouette{" "}
+              {recitalDay ? <RecitalStar size={16} className="align-[-2px]" /> : "🩰"}
             </p>
             <button
               onClick={() => start(data.suggestedRoutine!.id)}
@@ -132,7 +134,6 @@ export function TodayView({ data }: { data: TodayData }) {
             )}
           </Card>
         )}
-        {stage && <ProgramLineView line={stage.programLine} />}
       </div>
     );
   }
@@ -207,13 +208,15 @@ export function TodayView({ data }: { data: TodayData }) {
               {!closed && stage?.newToday && <p className="text-xs font-medium mt-0.5">{stage.newToday}</p>}
               {closed && <p className="text-xs text-muted mt-0.5">The stage is closed for today. See you next time. 🐾</p>}
             </div>
-            <button
-              onClick={() => run(() => reopenWorkout(data.workout!.id))}
-              disabled={isPending}
-              className="min-h-11 px-2 text-xs text-muted underline shrink-0"
-            >
-              Reopen
-            </button>
+            {!closed && (
+              <button
+                onClick={() => run(() => reopenWorkout(data.workout!.id))}
+                disabled={isPending}
+                className="min-h-11 px-2 text-xs text-muted underline shrink-0"
+              >
+                Reopen workout
+              </button>
+            )}
           </div>
           {!closed && (
             <Link
@@ -238,7 +241,6 @@ export function TodayView({ data }: { data: TodayData }) {
           onDone={() => {
             if (sound) playDone();
             setFlexSignal((n) => n + 1);
-            setFocusId(null);
             run(() => completeMovement(data.workout!.id, m.movementId, m.targetReps, m.targetSecs));
           }}
           onUndo={() => run(() => undoCompletion(m.completion!.id))}

@@ -13,17 +13,24 @@ let client: SupabaseClient | null = null;
  * Reduce whatever was pasted to the project's base address. supabase-js adds
  * /rest/v1 itself, so a pasted API address ("…supabase.co/rest/v1/") doubles
  * the path and every query fails with "Invalid path specified in request URL".
- * A dashboard link (".../dashboard/project/<ref>") is turned into the project
- * address too. Anything else is used as given.
+ * Any address on a project host (the API address, or a database connection
+ * string on db.<ref>.supabase.co) and a dashboard link (".../project/<ref>")
+ * become https://<ref>.supabase.co. Another http(s) address keeps its base
+ * path and loses only a pasted service path; anything else is used as given.
  */
 export function normalizeSupabaseUrl(raw: string): string {
   const value = raw.trim().replace(/^["']|["']$/g, "");
   try {
     const u = new URL(value);
-    if (u.hostname.endsWith(".supabase.co")) return u.origin;
+    const host = u.hostname.match(/(?:^|\.)([a-z0-9]+)\.supabase\.co$/)?.[1];
+    if (host) return `https://${host}.supabase.co`;
     const ref = u.pathname.match(/\/project\/([a-z0-9]{20})/)?.[1];
     if (ref) return `https://${ref}.supabase.co`;
-    return u.origin;
+    if (u.protocol === "http:" || u.protocol === "https:") {
+      const base = u.pathname.replace(/\/(rest|auth|storage|realtime|functions)\/v1(\/.*)?$/, "").replace(/\/+$/, "");
+      return `${u.origin}${base}`;
+    }
+    return value;
   } catch {
     return value;
   }

@@ -16,6 +16,8 @@
  * starts (the Sparkle catch lane times its window from it); onHidden fires when
  * the page is hidden mid-dance, before the stop (the stage goes to the Bow);
  * onStall fires when audio never started (the stage resets its curtains).
+ * A clock interrupted mid-show (Siri, an alarm, a call) is treated like the
+ * page being hidden: it calls onHidden, so the flow goes to the Bow.
  */
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { BOW_CHORD, MOVE_BY_KEY, type MoveKey } from "@/lib/dance-content";
@@ -28,7 +30,7 @@ export type PlayerState = "idle" | "playing" | "bowing" | "done";
 export const CARD_BEATS = 2;
 
 export type ShowItem =
-  | { kind: "card"; text: string; beats: number }
+  | { kind: "card"; text: string; beats: number; /** The segment it introduces, shown in the strip while it is up. */ segment?: number }
   | { kind: "move"; key: MoveKey; segment: number; index: number };
 
 export type PlayerOptions = {
@@ -61,6 +63,7 @@ export function useDancePlayer(rigRef: RefObject<HTMLDivElement | null>, opts: P
   optsRef.current = opts;
   const unsubRef = useRef<(() => void) | null>(null);
   const stallRef = useRef<(() => void) | null>(null);
+  const interruptRef = useRef<(() => void) | null>(null);
   /** The show's own output, so Stop can fade move notes and the chord too. */
   const outRef = useRef<GainNode | null>(null);
   const soundRef = useRef(opts.sound);
@@ -105,6 +108,8 @@ export function useDancePlayer(rigRef: RefObject<HTMLDivElement | null>, opts: P
       unsubRef.current = null;
       stallRef.current?.();
       stallRef.current = null;
+      interruptRef.current?.();
+      interruptRef.current = null;
       sequencer.stop(fadeSec);
       releaseOut(fadeSec);
       setMove(null);
@@ -164,6 +169,11 @@ export function useDancePlayer(rigRef: RefObject<HTMLDivElement | null>, opts: P
         stop(0);
         optsRef.current.onStall?.();
       });
+      // Interrupted after it was playing: never come back to a half-finished dance.
+      interruptRef.current = sequencer.onInterrupt(() => {
+        stop(0.3);
+        optsRef.current.onHidden?.();
+      });
 
       const at = new Map<number, ShowItem>();
       let b = 0;
@@ -180,6 +190,7 @@ export function useDancePlayer(rigRef: RefObject<HTMLDivElement | null>, opts: P
         if (item?.kind === "card") {
           setMove(null);
           setCurrentIndex(null);
+          if (item.segment != null) setSegment(item.segment);
           setCard(item.text);
           return;
         }
@@ -197,6 +208,8 @@ export function useDancePlayer(rigRef: RefObject<HTMLDivElement | null>, opts: P
           unsubRef.current = null;
           stallRef.current?.();
           stallRef.current = null;
+          interruptRef.current?.();
+          interruptRef.current = null;
           sequencer.stop(1.5); // music out over 1.5 s while the Bow step opens
           releaseOut(1);
           setCard(null);

@@ -20,7 +20,8 @@ export default async function TodayPage() {
         <img src="/icon.svg" alt="" className="w-16 h-16 rounded-2xl shadow-sm shrink-0" />
       </div>
       <div className="mt-5">
-        <TodayView data={data} />
+        {/* Keyed by the day: a refresh the next morning starts clean, not on yesterday's picker or step. */}
+        <TodayView key={data.today} data={data} />
       </div>
     </div>
   );

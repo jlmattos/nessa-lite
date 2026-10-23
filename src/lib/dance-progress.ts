@@ -276,8 +276,10 @@ export type SeasonSlot = {
   program: number;
   theme: string;
   color: string;
-  /** done = a recital at or after it has been performed (its poster's place); now = the Program she is in. */
-  state: "done" | "now" | "later";
+  /** A recital at or after it has been performed (its poster's place). */
+  done: boolean;
+  /** The Program she is in; on recital night it is both done and here. */
+  now: boolean;
 };
 
 export type SeasonPath = { season: 1 | 2; slots: SeasonSlot[] };
@@ -292,7 +294,8 @@ export function seasonMap(input: StageInput): SeasonPath[] {
       program: p.program,
       theme: p.theme,
       color: p.color,
-      state: p.program <= top ? "done" : p.program === current ? "now" : "later",
+      done: p.program <= top,
+      now: p.program === current,
     })),
   });
   return top >= PROGRAMS_PER_SEASON ? [path(1), path(2)] : [path(1)];

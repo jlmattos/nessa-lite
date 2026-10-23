@@ -34,11 +34,11 @@ function buildShow(p: PerformancePlan): { items: ShowItem[]; segments: Segment[]
   const add = (seg: Segment, card: string | null) => {
     const s = segments.length;
     segments.push(seg);
-    if (card) items.push({ kind: "card", text: card, beats: CARD_BEATS });
+    if (card) items.push({ kind: "card", text: card, beats: CARD_BEATS, segment: s });
     seg.moves.forEach((key, index) => items.push({ kind: "move", key, segment: s, index }));
   };
   if (p.recital) {
-    items.push({ kind: "card", text: `Recital ${p.recital.program}`, beats: CARD_BEATS });
+    items.push({ kind: "card", text: `Recital ${p.recital.program}`, beats: CARD_BEATS, segment: 0 });
     p.recital.dances.forEach((d, k) => add(d, `Dance ${k + 1} · ${d.name}`));
     add({ name: "Finale", moves: p.recital.finale }, "Finale");
     if (!p.recital.onTime) add(p.dance, `Now your dance · ${p.dance.name}`);
@@ -99,8 +99,8 @@ export function Performance({
   const [flights, setFlights] = useState<Flight[]>([]);
   const flightsRef = useRef<Flight[]>([]);
   const nextId = useRef(1);
-  const [bursts, setBursts] = useState<number[]>([]);
-  const [taps, setTaps] = useState<{ id: number; x: number; y: number }[]>([]);
+  const [burst, setBurst] = useState<number | null>(null);
+  const [tap, setTap] = useState<{ id: number; x: number; y: number } | null>(null);
   const [everCaught, setEverCaught] = useState(false);
 
   function later(fn: () => void, ms: number) {
@@ -239,6 +239,8 @@ export function Performance({
   }
 
   const playing = player.state === "playing" || player.state === "bowing";
+  // The catch burst (6) and the fingertip sparkle (1) borrow from the ambient ones, never below 3.
+  const ambientShown = Math.max(Math.min(3, ambient), ambient - (burst != null ? 6 : 0) - (tap ? 1 : 0));
 
   function onStageTap(e: MouseEvent<HTMLDivElement>) {
     if (curtains === "opening") {
@@ -251,8 +253,8 @@ export function Performance({
     if (hit) {
       updateFlights((f) => f.filter((x) => x.id !== hit.id));
       setEverCaught(true);
-      setBursts((b) => [...b, hit.id]);
-      later(() => setBursts((b) => b.filter((x) => x !== hit.id)), 1500);
+      setBurst(hit.id);
+      later(() => setBurst((b) => (b === hit.id ? null : b)), 1500);
       if (data.settings.sound) {
         const up = hit.midi + 12;
         if (up <= 84) playNote(up, { dur: 0.4, peak: 0.3 });
@@ -263,14 +265,18 @@ export function Performance({
     // Off the beat: a small silent sparkle where she tapped. Never wrong.
     const rect = e.currentTarget.getBoundingClientRect();
     const id = -nextId.current++;
-    setTaps((t) => [...t, { id, x: e.clientX - rect.left, y: e.clientY - rect.top }]);
-    later(() => setTaps((t) => t.filter((s) => s.id !== id)), 600);
+    setTap({ id, x: e.clientX - rect.left, y: e.clientY - rect.top });
+    later(() => setTap((t) => (t?.id === id ? null : t)), 600);
   }
 
   // What the strip shows: the segment dancing now, or before the start, tonight's dance.
   const show = useMemo(() => (plan ? buildShow(plan) : null), [plan]);
   const selected = danceId == null ? null : data.dances.find((d) => d.id === danceId) ?? null;
-  const fallback: Segment = { name: selected?.name ?? PIROUETTES_CHOICE_NAME, moves: selected?.moves ?? data.pirouettesChoice };
+  // Before a recital starts, the strip already shows its first dance, not her own.
+  const firstOfRecital: Segment | null = data.recital
+    ? data.recital.dances[0] ?? { name: "Finale", moves: data.recital.finale }
+    : null;
+  const fallback: Segment = firstOfRecital ?? { name: selected?.name ?? PIROUETTES_CHOICE_NAME, moves: selected?.moves ?? data.pirouettesChoice };
   const seg = show ? show.segments[player.segment ?? 0] ?? show.segments[0] : fallback;
   const isRecital = plan ? !!plan.recital : !!data.recital;
 
@@ -287,7 +293,7 @@ export function Performance({
             {/* ambient sparkles, within the motion budget; off with the None style */}
             {playing && !calm && ambient > 0 && (
               <div className="absolute inset-0 pointer-events-none" aria-hidden>
-                {Array.from({ length: ambient }).map((_, i) => (
+                {Array.from({ length: ambientShown }).map((_, i) => (
                   <span
                     key={i}
                     className="absolute text-base animate-lite-sparkle"
@@ -312,8 +318,8 @@ export function Performance({
                     ✦
                   </span>
                 ))}
-                {bursts.map((id) => (
-                  <span key={id} className="absolute left-1/2 top-1/2">
+                {burst != null && (
+                  <span key={burst} className="absolute left-1/2 top-1/2">
                     {Array.from({ length: 6 }).map((_, i) => (
                       <span
                         key={i}
@@ -324,7 +330,7 @@ export function Performance({
                       </span>
                     ))}
                   </span>
-                ))}
+                )}
               </div>
             )}
           </div>
@@ -338,9 +344,9 @@ export function Performance({
           </div>
         )}
         {/* off-beat tap sparkles */}
-        {taps.map((t) => (
-          <span key={t.id} className="absolute pointer-events-none text-xl animate-lite-tap-sparkle" style={{ left: t.x - 10, top: t.y - 10, color: laneColor }} aria-hidden>✦</span>
-        ))}
+        {tap && (
+          <span key={tap.id} className="absolute pointer-events-none text-xl animate-lite-tap-sparkle" style={{ left: tap.x - 10, top: tap.y - 10, color: laneColor }} aria-hidden>✦</span>
+        )}
         {playing && (
           <button
             onClick={stop}

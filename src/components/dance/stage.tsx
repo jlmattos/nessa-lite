@@ -5,8 +5,10 @@ import type { MouseEvent, ReactNode } from "react";
 export type CurtainState = "closed" | "opening" | "open" | "closing";
 
 /**
- * The stage box: a backdrop by stage key, the decorations earned so far
- * (drawn on top of every backdrop), the curtains, and whatever stands on it.
+ * The stage box: a backdrop by stage key, whatever stands on it, the
+ * curtains, and the decorations earned so far. Decorations sit in front of the
+ * curtain line (footlights at the lip, string lights across the top), so they
+ * show on a closed stage too: on the Bow that announces them, and every day after.
  * Darker backdrops stay inside the box; the page around it is always light.
  */
 export function StageBox({
@@ -37,11 +39,11 @@ export function StageBox({
       <Backdrop stageKey={stageKey} />
       {/* floor */}
       <div className="absolute bottom-0 inset-x-0 h-[14%] bg-black/10" aria-hidden />
-      <Decorations keys={decorations} />
       <div className="absolute inset-0 flex items-end justify-center pb-[8%]">{children}</div>
       {/* curtains */}
       <div className={`stage-curtain-l absolute inset-y-0 left-0 w-1/2 ${CURTAIN}`} data-state={curtains} aria-hidden />
       <div className={`stage-curtain-r absolute inset-y-0 right-0 w-1/2 ${CURTAIN}`} data-state={curtains} aria-hidden />
+      <Decorations keys={decorations} />
       {front && <div className="absolute inset-0 flex items-end justify-center pb-[8%]">{front}</div>}
     </div>
   );
@@ -89,7 +91,7 @@ function Backdrop({ stageKey }: { stageKey: string }) {
 function Decorations({ keys }: { keys: string[] }) {
   if (keys.length === 0) return null;
   return (
-    <svg className="absolute inset-0 w-full h-full" viewBox="0 0 400 300" preserveAspectRatio="none" aria-hidden>
+    <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 400 300" preserveAspectRatio="none" aria-hidden>
       {keys.includes("footlights") && (
         <g fill="#e6b422" opacity="0.9">
           {[40, 100, 160, 220, 280, 340].map((x) => <circle key={x} cx={x} cy="262" r="4" />)}

@@ -1,8 +1,11 @@
 "use client";
 
+import { useRef } from "react";
 import type { StageData, StageDance } from "@/actions/dance";
 import { Pirouette } from "@/components/dance/pirouette";
+import { useDancePlayer } from "@/lib/dance-player";
 import { MOVE_BY_KEY, FEATURES, PIROUETTES_CHOICE_NAME, type MoveKey } from "@/lib/dance-content";
+import { setVolume } from "@/lib/sound";
 
 /**
  * Step 2 (GAME-DESIGN.md §3.7). A fixed 2×2 grid that never reorders:
@@ -27,6 +30,10 @@ export function ChooseDance({
   onSelect: (id: string | null) => void;
   onNext: () => void;
 }) {
+  // The tap Twirl works on every idle Pirouette while the stage is open, as on Get ready.
+  const rig = useRef<HTMLDivElement>(null);
+  const player = useDancePlayer(rig, { sound: data.settings.sound });
+  const twirl = () => { setVolume(data.settings.volume); player.playMove("twirl"); };
   const selected: { name: string; moves: MoveKey[] } =
     selectedId == null
       ? { name: PIROUETTES_CHOICE_NAME, moves: data.pirouettesChoice }
@@ -41,7 +48,7 @@ export function ChooseDance({
     return (
       <div className="space-y-3">
         <div className="rounded-[1.25rem] bg-surface border border-line p-4 flex items-center gap-3">
-          <Pirouette size={120} costume={costume} />
+          <Pirouette ref={rig} size={120} costume={costume} onTap={twirl} />
           <div className="flex-1 min-w-0">
             <p className="text-xs uppercase tracking-wider text-muted font-semibold">Recital {recital.program}</p>
             <p className="font-semibold text-lg leading-tight mt-0.5">Today’s dances</p>
@@ -74,7 +81,7 @@ export function ChooseDance({
   return (
     <div className="space-y-3">
       <div className="rounded-[1.25rem] bg-surface border border-line p-4 flex items-start gap-3">
-        <Pirouette size={120} costume={costume} />
+        <Pirouette ref={rig} size={120} costume={costume} onTap={twirl} />
         <div className="flex-1 min-w-0">
           <p className="text-xs uppercase tracking-wider text-muted font-semibold">This dance</p>
           <p className="font-semibold text-lg leading-tight mt-0.5">{selected.name}</p>

@@ -83,7 +83,7 @@ Card: "The end." then "Rehearsal 3 of 4." On recital day: "Recital 2 complete." 
 
 ### 3.10 Done for today (the persisted ending)
 
-"Done for today" writes `workouts.stage_closed_at = now()`. The curtains close and the Stage tab reads "The stage is closed for today." with one small button "Open the curtains" (clears `stage_closed_at`; the stage reopens at Get ready for free play, the nav dot does not return, and nothing more is earned). Today now shows the done state: every strip icon dotted, the slipper (or the Recital star) dotted, today's circle filled, Pirouette in today's costume, "Today is done." and the Program line. Reopening the workout (clearing `completed_at`) also clears `stage_closed_at`.
+"Done for today" writes `workouts.stage_closed_at = now()`. The curtains close and the Stage tab reads "The stage is closed for today." with one small button "Open the curtains" (clears `stage_closed_at`; the stage reopens at Get ready for free play, the nav dot does not return, and nothing more is earned). Today now shows the done state: every strip icon dotted, the slipper (or the Recital star) dotted, today's circle filled, Pirouette in today's costume, "Today is done." and the Program line. Reopening the workout (clearing `completed_at`) also clears `stage_closed_at`. The card's link reads "Reopen workout", and it is not shown while the stage is closed (her way back then is "Open the curtains"), so "The stage is closed for today." never sits beside a button that un-finishes her workout.
 
 ### 3.11 Next day
 

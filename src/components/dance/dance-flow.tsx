@@ -133,6 +133,7 @@ export function DanceFlow({ data }: { data: StageData }) {
         <GetReady
           data={data}
           look={look}
+          decorations={decorations}
           onLook={(patch) => setLookState((l) => ({ ...l, ...patch }))}
           onNext={() => setStep("choose")}
         />
