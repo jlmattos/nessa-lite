@@ -4,7 +4,9 @@
  * useDancePlayer — drives the Pirouette rig from the beat clock.
  *
  * It plays a *show*: a timeline of title cards and dance segments on one
- * continuous clock (the music never stops between dances), then the Bow.
+ * continuous clock (the music never stops between dances). The Bow is its
+ * own one-shot (playBow), played by the Bow step, so every ending is the same
+ * whether the show finished, was stopped, or the page was hidden.
  * It sets `data-move` on the rig's <svg class="pir"> (with the reflow trick so
  * the same move can repeat back to back), sets `--beat` from the tempo, plays
  * each move's note on the audio clock, and stops cleanly on unmount or when
@@ -16,7 +18,7 @@
  * onStall fires when audio never started (the stage resets its curtains).
  */
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
-import { BOW_BEATS, BOW_CHORD, MOVE_BY_KEY, type MoveKey } from "@/lib/dance-content";
+import { BOW_CHORD, MOVE_BY_KEY, type MoveKey } from "@/lib/dance-content";
 import { QUIET, sequencer, type Song } from "@/lib/music";
 import { getAudioContext, masterOut, playChord, playNote } from "@/lib/sound";
 
@@ -125,8 +127,19 @@ export function useDancePlayer(rigRef: RefObject<HTMLDivElement | null>, opts: P
   );
 
   /**
-   * A whole show on the clock, then the Bow. `song` null = the Quiet clock at
-   * `bpmIfQuiet`. Returns false when audio could not start (no gesture yet).
+   * The Bow: the rig's bow move once and the final slow chord (§3.9). Called
+   * by the Bow step on every ending; no chord while the page is hidden.
+   */
+  const playBow = useCallback(() => {
+    setMove("bow");
+    if (soundRef.current && typeof document !== "undefined" && document.visibilityState === "visible") {
+      playChord(BOW_CHORD);
+    }
+  }, [setMove]);
+
+  /**
+   * A whole show on the clock. `song` null = the Quiet clock at `bpmIfQuiet`.
+   * Returns false when audio could not start (no gesture yet).
    */
   const playShow = useCallback(
     (items: ShowItem[], song: Song | null, bpmIfQuiet = 66): boolean => {
@@ -158,8 +171,7 @@ export function useDancePlayer(rigRef: RefObject<HTMLDivElement | null>, opts: P
         at.set(b, item);
         b += item.kind === "card" ? item.beats : MOVE_BY_KEY[item.key].beats;
       }
-      const bowAt = b;
-      const doneAt = b + BOW_BEATS;
+      const doneAt = b;
 
       setState("playing");
       unsubRef.current = sequencer.onBeat((beat, time) => {
@@ -180,21 +192,15 @@ export function useDancePlayer(rigRef: RefObject<HTMLDivElement | null>, opts: P
           optsRef.current.onMoveStart?.(item.key);
           return;
         }
-        if (beat === bowAt) {
-          setCard(null);
-          setCurrentIndex(null);
-          setState("bowing");
-          setMove("bow");
-          if (soundRef.current) playChord(BOW_CHORD, { at: time, out });
-          return;
-        }
         if (beat >= doneAt) {
           unsubRef.current?.();
           unsubRef.current = null;
           stallRef.current?.();
           stallRef.current = null;
-          sequencer.stop(1);
-          releaseOut(2); // let the chord's tail ring out
+          sequencer.stop(1.5); // music out over 1.5 s while the Bow step opens
+          releaseOut(1);
+          setCard(null);
+          setCurrentIndex(null);
           setMove(null);
           setState("done");
         }
@@ -222,9 +228,9 @@ export function useDancePlayer(rigRef: RefObject<HTMLDivElement | null>, opts: P
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
-      stop(0);
+      stop(1); // leaving mid-dance fades the music out; the audio graph outlives the component
     };
   }, [stop]);
 
-  return { state, currentIndex, segment, card, play, playShow, playMove, stop };
+  return { state, currentIndex, segment, card, play, playShow, playMove, playBow, stop };
 }

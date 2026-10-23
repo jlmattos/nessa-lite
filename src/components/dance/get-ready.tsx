@@ -79,7 +79,7 @@ export function GetReady({
           ref={rig}
           size={220}
           costume={look.costume}
-          dancing={!calm}
+          sway={!calm}
           onTap={() => { setVolume(data.settings.volume); player.playMove("twirl"); }}
         />
         <p className="mt-2 text-xs text-muted">{musicName}</p>
@@ -119,8 +119,7 @@ export function GetReady({
 
       <button
         onClick={next}
-        disabled={isPending}
-        className="w-full h-16 rounded-2xl bg-accent text-white text-xl font-semibold shadow-sm active:scale-[0.99] transition-transform disabled:opacity-60"
+        className="w-full h-16 rounded-2xl bg-accent text-white text-xl font-semibold shadow-sm active:scale-[0.99] transition-transform"
       >
         Next: Choose a dance
       </button>

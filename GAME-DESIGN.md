@@ -464,4 +464,6 @@ The twenty open questions were answered on 22 October 2026, and every section ab
 
 Still to confirm, with her, on the real iPad during Phase 0: whether the big spins (12) are comfortable to watch, and whether the four step names (1) are the words she would use.
 
+Also to confirm with Jose: each Done on Today still shows lift-lite’s small flexing-cat toast. §3.2 asks for a plain workout (chime, check, dot), but this is the lift-lite reward she already loves, so it stays until he says otherwise.
+
 Added after the consistency review and confirmed by Jose the same day (22 October 2026): the amendment to #16 above; the twelve naming words in #7 (Garden and Snow swapped afterwards for Cloud and River, see #7); four Program themes sharing a name with one item in their own Program (Sugar Plum, Starlight, Grand Theater, Rainbow), kept with the kind-word rule rather than renamed; and the Season Two theme names Dawn, Lantern, Meadow, Harvest, Frost, Comet, Ember, Blossom, Velvet, Encore.

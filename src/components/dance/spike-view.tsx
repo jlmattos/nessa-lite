@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pirouette } from "@/components/dance/pirouette";
 import { useDancePlayer } from "@/lib/dance-player";
 import { MOVES, PRESET_DANCES, type MoveKey } from "@/lib/dance-content";
@@ -22,6 +22,11 @@ export function SpikeView() {
   const base: Song | null = songKey === "music_box" ? MUSIC_BOX : songKey === "carnival_parade" ? CARNIVAL_PARADE : null;
   const song: Song | null = base ? { ...base, bpm } : null;
   const busy = player.state === "playing" || player.state === "bowing";
+  // After a whole dance, the Bow (the stage plays it on its Bow step).
+  const { state: playerState, playBow } = player;
+  useEffect(() => {
+    if (playerState === "done") playBow();
+  }, [playerState, playBow]);
   const currentDance = useRef<MoveKey[]>([]);
   const currentName = player.currentIndex != null ? MOVES.find((m) => m.key === currentDance.current[player.currentIndex!])?.name : null;
 
@@ -47,7 +52,7 @@ export function SpikeView() {
           <div className="absolute inset-y-0 left-0 w-7 bg-accent/60 rounded-r-2xl" aria-hidden />
           <div className="absolute inset-y-0 right-0 w-7 bg-accent/60 rounded-l-2xl" aria-hidden />
           <div className="absolute bottom-0 inset-x-7 h-6 bg-line/70 rounded-t-[50%]" aria-hidden />
-          <Pirouette ref={rig} size={size} dancing={player.state !== "idle" || musicOnly} />
+          <Pirouette ref={rig} size={size} sway={player.state !== "idle" || musicOnly} />
           <p className="mt-3 font-semibold text-lg h-7">
             {player.state === "bowing" ? "Bow" : currentName ?? (player.state === "done" ? "The end." : "Pirouette")}
           </p>

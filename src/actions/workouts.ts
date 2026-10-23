@@ -41,7 +41,13 @@ export type TodayData = {
   /** Today's visual schedule, in order. Empty when no workout is open. */
   movements: TodayMovement[];
   /** Rotation suggestion when no workout exists yet. */
-  suggestedRoutine: { id: string; name: string; movementCount: number } | null;
+  /** Rotation suggestion when no workout exists yet, with its steps for the schedule strip. */
+  suggestedRoutine: {
+    id: string;
+    name: string;
+    movementCount: number;
+    movements: { movementId: string; name: string; icon: string }[];
+  } | null;
   allRoutines: { id: string; name: string }[];
   hasRoutine: boolean;
   totalWorkouts: number;
@@ -153,11 +159,19 @@ export async function getTodayData(): Promise<TodayData> {
 
   let suggestedRoutine: TodayData["suggestedRoutine"] = null;
   if (suggested) {
-    const { count } = await supabase
+    // The steps themselves, so Today shows the whole plan before she starts (§3.0).
+    const { data: rows, error } = await supabase
       .from("routine_movements")
-      .select("id", { count: "exact", head: true })
-      .eq("routine_id", suggested.id);
-    suggestedRoutine = { ...suggested, movementCount: count ?? 0 };
+      .select("movement_id, position, movements(name, icon)")
+      .eq("routine_id", suggested.id)
+      .order("position");
+    if (error) throw new Error(`Couldn’t load today: ${error.message}`);
+    const movements = (rows ?? []).map((m) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mv = ((m as any).movements ?? {}) as { name?: string; icon?: string };
+      return { movementId: m.movement_id as string, name: mv.name ?? "?", icon: mv.icon ?? "⭐" };
+    });
+    suggestedRoutine = { ...suggested, movementCount: movements.length, movements };
   }
 
   return {

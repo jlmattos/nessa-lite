@@ -206,9 +206,11 @@ export function programLine(input: StageInput): ProgramLine {
   else {
     const next = nextUnlock(tN, countNMax(input));
     if (next.kind === "item") {
+      const label = announce(next.item);
+      const sep = next.item.kind === "move" ? ", " : " ";
       nextText = next.inWorkouts === 0
-        ? `Today: ${announce(next.item)}`
-        : `Next: ${announce(next.item)} in ${next.inWorkouts} workout${next.inWorkouts === 1 ? "" : "s"}`;
+        ? `Today: ${label}`
+        : `Next: ${label}${sep}in ${next.inWorkouts} workout${next.inWorkouts === 1 ? "" : "s"}`;
     } else {
       nextText = `Next: Recital ${next.program} in ${next.inWorkouts} workout${next.inWorkouts === 1 ? "" : "s"}`;
     }

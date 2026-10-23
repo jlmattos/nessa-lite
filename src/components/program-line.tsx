@@ -4,8 +4,10 @@ import type { ProgramLine } from "@/lib/dance-progress";
 import { RecitalStar } from "@/components/schedule-strip";
 
 /**
- * The Program line (GAME-DESIGN.md §3.0): four small circles and a star for
- * where she is in the Program, then one "Next: …" line. Static, two rows.
+ * The Program line (GAME-DESIGN.md §3.0): four small circles and a small star
+ * for where she is in the Program, then one "Next: …" line. Static, two rows.
+ * Today's circle (or the star, on recital day) is ringed in coral and fills at
+ * Finish: the one per-day completion mark.
  */
 export function ProgramLineView({ line, className = "" }: { line: ProgramLine; className?: string }) {
   return (
@@ -21,8 +23,12 @@ export function ProgramLineView({ line, className = "" }: { line: ProgramLine; c
               />
             );
           })}
-          <span className={`inline-flex ${line.star === "future" ? "opacity-40" : ""}`}>
-            <RecitalStar className={line.star === "today" ? "scale-110" : ""} />
+          <span
+            className={`inline-flex items-center justify-center rounded-full ${
+              line.star === "today" ? "ring-2 ring-accent p-0.5" : line.star === "future" ? "opacity-35" : "bg-accent-soft p-0.5"
+            }`}
+          >
+            <RecitalStar size={12} />
           </span>
         </div>
         <p className="text-sm font-medium" aria-label={`Program ${line.program}: ${line.text}`}>{line.text}</p>

@@ -99,7 +99,8 @@ export const SONGS: Record<string, Song> = { music_box: MUSIC_BOX, harp_song: HA
 
 const LOOKAHEAD_SEC = 0.2; // generous: each beat also forces a reflow and a React render
 const TICK_MS = 25;
-const FADE_IN_SEC = 0.15;
+const FADE_IN_SEC = 1.5;      // a dance: the music eases in (§3.8)
+const PREVIEW_FADE_SEC = 0.3; // a tile preview: every start is a ramp of at least 300 ms
 const STALL_MS = 1200; // a context that never reaches "running" after a gesture
 
 class Sequencer {
@@ -116,6 +117,7 @@ class Sequencer {
   private previewTimer: number | null = null;
   private startedAt = 0;      // audio-clock time of start()
   private startedWall = 0;    // performance.now() at start(), for the stall guard
+  private fadeIn = FADE_IN_SEC;
 
   get isPlaying() {
     return this.timer !== null;
@@ -126,7 +128,7 @@ class Sequencer {
   }
 
   /** Start a song (or just its clock with `music: false`). Returns false if audio is unavailable. */
-  start(song: Song, opts: { music?: boolean; bpm?: number } = {}): boolean {
+  start(song: Song, opts: { music?: boolean; bpm?: number; fadeIn?: number } = {}): boolean {
     const ac = getAudioContext();
     const out = masterOut();
     if (!ac || !out) return false;
@@ -137,11 +139,11 @@ class Sequencer {
     this.beatIndex = 0;
     this.startedAt = ac.currentTime;
     this.startedWall = performance.now();
-    // A short swell so the downbeat is heard; the clock starts after it.
-    this.nextBeatTime = ac.currentTime + FADE_IN_SEC + 0.05;
+    this.fadeIn = opts.fadeIn ?? FADE_IN_SEC;
+    this.nextBeatTime = ac.currentTime + 0.12;
     const gain = ac.createGain();
     gain.gain.setValueAtTime(0, ac.currentTime);
-    gain.gain.linearRampToValueAtTime(1, ac.currentTime + FADE_IN_SEC);
+    gain.gain.linearRampToValueAtTime(1, ac.currentTime + this.fadeIn);
     gain.connect(out);
     this.gain = gain;
     this.timer = window.setInterval(() => this.tick(), TICK_MS);
@@ -171,7 +173,7 @@ class Sequencer {
       if (typeof p.cancelAndHoldAtTime === "function") {
         p.cancelAndHoldAtTime(now);
       } else {
-        const v = Math.min(1, Math.max(0, (now - this.startedAt) / FADE_IN_SEC));
+        const v = Math.min(1, Math.max(0, (now - this.startedAt) / this.fadeIn));
         p.cancelScheduledValues(now);
         p.setValueAtTime(v, now);
       }
@@ -200,7 +202,7 @@ class Sequencer {
 
   /** Two seconds of a song, for a music tile tap. One preview at a time; a new start cancels it. */
   preview(song: Song, ms = 2000) {
-    if (!this.start(song)) return;
+    if (!this.start(song, { fadeIn: PREVIEW_FADE_SEC })) return;
     this.previewTimer = window.setTimeout(() => {
       this.previewTimer = null;
       this.stop(0.3);

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import { BottomNav } from "@/components/bottom-nav";
+import { ResumeRefresh } from "@/components/resume-refresh";
 import { getSettings } from "@/actions/settings";
 import { getStageWaiting } from "@/lib/stage-data";
 import { todayLocal } from "@/lib/dates";
@@ -39,6 +40,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         <main className="flex-1 pb-28">{children}</main>
         <BottomNav stageDot={stageDot} />
+        <ResumeRefresh />
       </body>
     </html>
   );

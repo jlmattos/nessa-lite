@@ -61,9 +61,12 @@ export function DanceFlow({ data }: { data: StageData }) {
   if (!data.unlocked) {
     return (
       <div className="space-y-3">
-        <StageBox stageKey={look.stage} curtains="closed" decorations={data.decorations}>
-          <Pirouette size={150} costume={look.costume} dancing={!data.settings.reducedMotion} />
-        </StageBox>
+        <StageBox
+          stageKey={look.stage}
+          curtains="closed"
+          decorations={data.decorations}
+          front={<Pirouette size={150} costume={look.costume} sway={!data.settings.reducedMotion} />}
+        />
         <div className="rounded-[1.25rem] bg-surface border border-line p-4">
           <p className="font-semibold">Pirouette is resting 💤</p>
           <p className="text-sm text-muted mt-1">Finish today’s workout. Then Pirouette dances.</p>
@@ -79,15 +82,18 @@ export function DanceFlow({ data }: { data: StageData }) {
   if (data.closed) {
     return (
       <div className="space-y-3">
-        <StageBox stageKey={look.stage} curtains="closed" decorations={data.decorations}>
-          <Pirouette size={150} costume={look.costume} />
-        </StageBox>
+        <StageBox
+          stageKey={look.stage}
+          curtains="closed"
+          decorations={data.decorations}
+          front={<Pirouette size={150} costume={look.costume} />}
+        />
         <div className="rounded-[1.25rem] bg-surface border border-line p-4 text-center">
           <p className="font-semibold text-lg">The stage is closed for today.</p>
           <button
             onClick={() => startTransition(async () => { await openCurtains(); router.refresh(); })}
             disabled={isPending}
-            className="mt-3 text-sm text-muted underline disabled:opacity-60"
+            className="mt-2 min-h-11 px-4 inline-flex items-center text-sm text-muted underline disabled:opacity-60"
           >
             Open the curtains
           </button>
@@ -121,7 +127,7 @@ export function DanceFlow({ data }: { data: StageData }) {
 
   return (
     <div className="space-y-3">
-      <ScheduleStrip title="Tonight on the stage" items={items} line={line} />
+      <ScheduleStrip title="On the stage" items={items} line={line} />
 
       {step === "get_ready" && (
         <GetReady

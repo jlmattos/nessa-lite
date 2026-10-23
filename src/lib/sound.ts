@@ -77,6 +77,14 @@ export function tone(
   osc.stop(start + dur + 0.05);
 }
 
+/** One soft note when she taps Start (C5 sine, 0.6 s decay, §3.1). */
+export function playStart() {
+  const ac = getAudioContext();
+  const out = masterOut();
+  if (!ac || !out) return;
+  tone(ac, out, 523.25, ac.currentTime, 0.6, 0.4);
+}
+
 /** Two-note chime for a finished movement (C5 → G5). */
 export function playDone() {
   const ac = getAudioContext();

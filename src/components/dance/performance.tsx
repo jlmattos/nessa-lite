@@ -82,6 +82,8 @@ export function Performance({
   const pendingRef = useRef<PerformancePlan | null>(null);
   const openTimer = useRef<number | null>(null);
   const timers = useRef(new Set<number>());
+  /** False once this step has unmounted: a late startDance or timer must never start a show on another page. */
+  const alive = useRef(true);
 
   const calm = data.settings.reducedMotion;
   const laneOn = data.settings.sparkleTaps; // its own setting; the None style only turns off the ambient ones
@@ -119,8 +121,10 @@ export function Performance({
     }
   }
   useEffect(() => {
+    alive.current = true; // set in the body: Strict Mode runs effects twice
     const set = timers.current;
     return () => {
+      alive.current = false;
       clearOpenTimer();
       for (const t of set) clearTimeout(t);
       set.clear();
@@ -158,9 +162,33 @@ export function Performance({
     if (player.state === "done" && planRef.current) onBow(planRef.current, false);
   }, [player.state, onBow]);
 
+  /**
+   * Hidden before the show started (curtains opening, or startDance in flight):
+   * never start in the background. If the row is written, go to the Bow; if not, close the curtains.
+   */
+  function abandonHidden() {
+    clearOpenTimer();
+    pendingRef.current = null;
+    if (planRef.current) onBow(planRef.current, true);
+    else setCurtains("closed");
+  }
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState !== "hidden") return;
+      if (openTimer.current != null || pendingRef.current) abandonHidden();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  });
+
   /** Curtains are open (or skipped): start the clock. */
   function reveal() {
     clearOpenTimer();
+    if (!alive.current) return;
+    if (document.visibilityState === "hidden") {
+      abandonHidden();
+      return;
+    }
     const p = pendingRef.current;
     pendingRef.current = null;
     if (!p) return;
@@ -173,6 +201,7 @@ export function Performance({
   }
 
   function begin(p: PerformancePlan) {
+    if (!alive.current) return;
     planRef.current = p;
     setPlan(p);
     pendingRef.current = p;
@@ -269,7 +298,7 @@ export function Performance({
                 ))}
               </div>
             )}
-            <Pirouette ref={rig} size={200} costume={look.costume} dancing={playing && !calm} />
+            <Pirouette ref={rig} size={200} costume={look.costume} sway={playing && !calm} />
             {/* the still ring at her chest; every Sparkle catch sparkle ends here */}
             {laneOn && playing && (
               <div className="absolute pointer-events-none" style={{ left: "50%", top: "62%", transform: "translate(-50%, -50%)" }} aria-hidden>
@@ -329,8 +358,11 @@ export function Performance({
         </div>
       )}
 
-      {laneOn && playing && (
-        <p className="text-sm text-center text-muted px-2">Tap when the sparkle reaches Pirouette. You can also just watch.</p>
+      {/* The space is kept for the whole step so nothing moves when the dance starts; the words show only during it. */}
+      {laneOn && (
+        <p className={`text-sm text-center text-muted px-2 ${playing ? "" : "invisible"}`} aria-hidden={!playing}>
+          Tap when the sparkle reaches Pirouette. You can also just watch.
+        </p>
       )}
 
       <div className="rounded-[1.25rem] bg-surface border border-line px-4 py-3">

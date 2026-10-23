@@ -6,7 +6,7 @@ import { COSTUMES } from "@/lib/dance-content";
 /**
  * Pirouette, the ballerina cat — the rig. Same chibi proportions and palette
  * as the figurine cats, drawn as named groups so the player can move her:
- * legs, then the upper body (torso, arms, head), then sparkles. Moves are
+ * legs, then the upper body (torso, arms, head). Moves are
  * CSS keyframes selected by `data-move` on the <svg>; see globals.css.
  * A costume is three colours (CSS custom properties on the root) plus a few
  * overlay shapes, exactly like the cat outfits.
@@ -14,20 +14,19 @@ import { COSTUMES } from "@/lib/dance-content";
 const CREAM = "#fff7ef";
 const INK = "#3d3436";
 const PINK = "#f2b3a6";
-const GOLD = "#e6b422";
 
 type CSSVars = CSSProperties & { [key: `--${string}`]: string };
 
 export function Pirouette({
   size = 96,
-  dancing = false,
+  sway = false,
   costume = "classic",
   ref,
   onTap,
 }: {
   size?: number;
-  /** Gentle sway and breathing sparkles while she is "on stage". */
-  dancing?: boolean;
+  /** Gentle sway (the only motion allowed outside the Dance step, §7). Sparkles live on the stage, not on her. */
+  sway?: boolean;
   /** A costume key from the catalog; unknown keys fall back to Classic. */
   costume?: string;
   /** The wrapper div: the player uses it to find the svg and force reflows. */
@@ -42,7 +41,7 @@ export function Pirouette({
   return (
     <div
       ref={ref}
-      className={`pir-wrap${dancing ? " pir-sway" : ""}`}
+      className={`pir-wrap${sway ? " pir-sway" : ""}`}
       style={{ width: size, height: size * 1.2 }}
       onClick={onTap}
       role={onTap ? "button" : undefined}
@@ -112,13 +111,6 @@ export function Pirouette({
           </g>
         </g>
 
-        {dancing && (
-          <g className="pir-sparkles" fill={GOLD}>
-            <path className="animate-lite-sparkle" d="M12 30 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2 z" />
-            <path className="animate-lite-sparkle" style={{ animationDelay: "0.5s" }} d="M90 36 l1.5 4 4 1.5 -4 1.5 -1.5 4 -1.5 -4 -4 -1.5 4 -1.5 z" />
-            <path className="animate-lite-sparkle" style={{ animationDelay: "1s" }} d="M22 100 l1.5 4 4 1.5 -4 1.5 -1.5 4 -1.5 -4 -4 -1.5 4 -1.5 z" />
-          </g>
-        )}
       </svg>
     </div>
   );

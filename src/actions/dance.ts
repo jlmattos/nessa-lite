@@ -141,7 +141,8 @@ export async function getStageData(): Promise<StageData> {
     bannerToday: newToday ? `New today: ${announce(newToday)}` : null,
     bannerSince: row ? [] : newSinceLastTime(input).map(announce),
     earnedCats: computeEarnedCats(n),
-    ambient: ambientSparkles(n, settings.sparkleAmount, 0, settings.sparkleTaps ? 1 : 0),
+    // Two Sparkle catch sparkles can be in flight at once (2-beat moves), so the lane takes two slots.
+    ambient: ambientSparkles(n, settings.sparkleAmount, 0, settings.sparkleTaps ? 2 : 0),
   };
 }
 

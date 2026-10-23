@@ -15,13 +15,17 @@ export function StageBox({
   decorations = [],
   onTap,
   children,
+  front,
   className = "",
 }: {
   stageKey: string;
   curtains: CurtainState;
   decorations?: string[];
   onTap?: (e: MouseEvent<HTMLDivElement>) => void;
-  children: ReactNode;
+  /** On the stage, behind the curtains. */
+  children?: ReactNode;
+  /** In front of the curtains: what she sees on a closed stage. */
+  front?: ReactNode;
   className?: string;
 }) {
   return (
@@ -38,6 +42,7 @@ export function StageBox({
       {/* curtains */}
       <div className={`stage-curtain-l absolute inset-y-0 left-0 w-1/2 ${CURTAIN}`} data-state={curtains} aria-hidden />
       <div className={`stage-curtain-r absolute inset-y-0 right-0 w-1/2 ${CURTAIN}`} data-state={curtains} aria-hidden />
+      {front && <div className="absolute inset-0 flex items-end justify-center pb-[8%]">{front}</div>}
     </div>
   );
 }

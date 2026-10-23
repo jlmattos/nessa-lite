@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { StageData, Look, PerformancePlan } from "@/actions/dance";
 import { closeCurtains } from "@/actions/dance";
 import { Pirouette } from "@/components/dance/pirouette";
 import { StageBox, type CurtainState } from "@/components/dance/stage";
 import { FigurineCat } from "@/components/cats";
+import { useDancePlayer } from "@/lib/dance-player";
 
 /**
  * Step 4 (GAME-DESIGN.md §3.9, §3.10). The curtains close, the cat friends in
@@ -36,6 +37,16 @@ export function Bow({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const calm = data.settings.reducedMotion;
+  const rig = useRef<HTMLDivElement>(null);
+  const player = useDancePlayer(rig, { sound: data.settings.sound });
+  const bowed = useRef(false);
+  // Every ending is the same: Pirouette bows once and the final chord plays.
+  const { playBow } = player;
+  useEffect(() => {
+    if (bowed.current) return;
+    bowed.current = true;
+    playBow();
+  }, [playBow]);
   // The curtains close over 3 s as the Bow opens; in calm mode they are simply closed.
   const curtains: CurtainState = calm ? "closed" : "closing";
   // What just played decides the line, not the text computed before the dance.
@@ -58,7 +69,7 @@ export function Bow({
   return (
     <div className="space-y-3">
       <StageBox stageKey={look.stage} curtains={curtains} decorations={decorations}>
-        <Pirouette size={150} costume={look.costume} />
+        <Pirouette ref={rig} size={150} costume={look.costume} />
       </StageBox>
 
       {data.earnedCats.length > 0 && (
