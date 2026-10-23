@@ -16,8 +16,23 @@ function fromEnvLocal(name) {
   return m ? m[1].trim() : null;
 }
 
-const url =
-  process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? fromEnvLocal("NEXT_PUBLIC_SUPABASE_URL");
+// Reduce a pasted API address (…/rest/v1) or dashboard link to the project's base address.
+function normalize(raw) {
+  if (!raw) return raw;
+  const value = raw.trim().replace(/^["']|["']$/g, "");
+  try {
+    const u = new URL(value);
+    if (u.hostname.endsWith(".supabase.co")) return u.origin;
+    const ref = u.pathname.match(/\/project\/([a-z0-9]{20})/)?.[1];
+    return ref ? `https://${ref}.supabase.co` : u.origin;
+  } catch {
+    return value;
+  }
+}
+
+const url = normalize(
+  process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? fromEnvLocal("SUPABASE_URL") ?? fromEnvLocal("NEXT_PUBLIC_SUPABASE_URL")
+);
 const key = process.env.SUPABASE_SECRET_KEY ?? fromEnvLocal("SUPABASE_SECRET_KEY");
 if (!url || !key) {
   console.error("Missing SUPABASE_URL / SUPABASE_SECRET_KEY (env or .env.local)");

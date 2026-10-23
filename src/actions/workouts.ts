@@ -81,18 +81,25 @@ async function suggestNextRoutine(): Promise<{ id: string; name: string } | null
 export async function getTodayData(): Promise<TodayData> {
   const today = todayLocal();
 
-  const { data: workout } = await supabase
+  const { data: workout, error: workoutError } = await supabase
     .from("workouts")
     .select("*")
     .eq("performed_on", today)
     .maybeSingle();
+  // A failed read must never look like "nothing yet" (it would say "set up a routine first").
+  if (workoutError) throw new Error(`Couldn’t load today: ${workoutError.message}`);
 
-  const [{ data: routines }, suggested, settings, { count: totalCompleted }] = await Promise.all([
+  const [routinesQ, suggested, settings, completedQ] = await Promise.all([
     supabase.from("routines").select("id, name").order("position"),
     workout ? Promise.resolve(null) : suggestNextRoutine(),
     getSettings(),
     supabase.from("workouts").select("id", { count: "exact", head: true }).not("completed_at", "is", null),
   ]);
+  for (const q of [routinesQ, completedQ]) {
+    if (q.error) throw new Error(`Couldn’t load today: ${q.error.message}`);
+  }
+  const routines = routinesQ.data;
+  const totalCompleted = completedQ.count;
 
   let movements: TodayMovement[] = [];
   if (workout?.routine_id) {
