@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition, type CSSProperties
 import type { StageData, Look, PerformancePlan } from "@/actions/dance";
 import { startDance } from "@/actions/dance";
 import { Pirouette } from "@/components/dance/pirouette";
-import { StageBox, type CurtainState } from "@/components/dance/stage";
+import { StageBox, type CurtainState, type StageRosette } from "@/components/dance/stage";
 import { MoveStrip } from "@/components/dance/choose-dance";
 import { FigurineCat } from "@/components/cats";
 import { useDancePlayer, CARD_BEATS, type ShowItem } from "@/lib/dance-player";
@@ -62,6 +62,7 @@ export function Performance({
   danceId,
   replay,
   decorations,
+  rosettes,
   onBow,
 }: {
   data: StageData;
@@ -71,6 +72,8 @@ export function Performance({
   replay: PerformancePlan | null;
   /** Decorations on the stage tonight (frozen at open; new ones arrive at the Bow). */
   decorations: string[];
+  /** Rosettes on the curtain tie-backs (frozen the same way). */
+  rosettes: StageRosette[];
   onBow: (plan: PerformancePlan, stopped: boolean) => void;
 }) {
   const rig = useRef<HTMLDivElement>(null);
@@ -287,6 +290,7 @@ export function Performance({
           stageKey={look.stage}
           curtains={curtains}
           decorations={decorations}
+          rosettes={rosettes}
           onTap={curtains === "opening" || playing ? onStageTap : undefined}
         >
           <div className="relative">

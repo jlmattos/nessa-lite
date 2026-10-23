@@ -47,7 +47,7 @@ export function CollectionView({ data }: { data: ProgressData }) {
       </div>
 
       {/* The Season map: the long story, next to the cats */}
-      {data.season && <SeasonMap paths={data.season} />}
+      {data.season && <SeasonMap paths={data.season} rosettes={data.rosettes} />}
 
       {/* Friendly stats */}
       <div className="grid grid-cols-2 gap-3">

@@ -5,22 +5,26 @@ import { useRouter } from "next/navigation";
 import type { StageData, Look, PerformancePlan } from "@/actions/dance";
 import { closeCurtains } from "@/actions/dance";
 import { Pirouette } from "@/components/dance/pirouette";
-import { StageBox, type CurtainState } from "@/components/dance/stage";
+import { StageBox, stageBackground, type CurtainState, type StageRosette } from "@/components/dance/stage";
+import { PosterCard } from "@/components/dance/poster";
 import { FigurineCat } from "@/components/cats";
 import { useDancePlayer } from "@/lib/dance-player";
+import { posterFor } from "@/lib/dance-progress";
 
 /**
  * Step 4 (GAME-DESIGN.md §3.9, §3.10). The curtains close, the cat friends in
  * the front row clap (one hop each), "The end.", where she is in the Program
- * (or "Recital N complete." and what is new on the stage), then two buttons:
- * Done for today (persisted) and Dance again (replays exactly what just
- * played; nothing more is written). Posters arrive in Phase 2.
+ * (or "Recital N complete.", the Program's poster and what is new on the
+ * stage), any rosette line earned today ("You made a dance."), then two
+ * buttons: Done for today (persisted) and Dance again (replays exactly what
+ * just played; nothing more is written).
  */
 export function Bow({
   data,
   look,
   plan,
   decorations,
+  rosettes,
   newDecorations,
   onDanceAgain,
 }: {
@@ -29,6 +33,8 @@ export function Bow({
   plan: PerformancePlan;
   /** Everything on the stage now, including what tonight's recital added. */
   decorations: string[];
+  /** Rosettes on the curtain tie-backs, tonight's included. */
+  rosettes: StageRosette[];
   /** Names of the decorations tonight's recital added, for the one announcement. */
   newDecorations: string[];
   onDanceAgain: () => void;
@@ -53,6 +59,9 @@ export function Bow({
   const line = plan.recital ? `Recital ${plan.recital.program} complete.` : data.programLine.text;
   // On recital day the recital was the show; on other evenings name the dance she chose.
   const danceName = plan.recital?.onTime ? null : plan.dance.name;
+  // Tonight's poster is built from what just played, in the look that played it.
+  const poster = plan.recital ? posterFor(plan.recital.program, look, plan.recital.dances.map((d) => d.moves)) : null;
+  const rosetteLines = data.rosettes.flatMap((r) => (r.line ? [r.line] : []));
 
   function done() {
     setError(null);
@@ -68,7 +77,7 @@ export function Bow({
 
   return (
     <div className="space-y-3">
-      <StageBox stageKey={look.stage} curtains={curtains} decorations={decorations}>
+      <StageBox stageKey={look.stage} curtains={curtains} decorations={decorations} rosettes={rosettes}>
         <Pirouette ref={rig} size={150} costume={look.costume} />
       </StageBox>
 
@@ -85,9 +94,17 @@ export function Bow({
       <div className="rounded-[1.25rem] bg-surface border border-line p-5 text-center">
         <p className="text-2xl font-bold">The end.</p>
         <p className="text-sm text-muted mt-1">{line}</p>
-        {newDecorations.length > 0 && (
-          <p className="text-sm font-medium mt-1">New on the stage: {newDecorations.join(" · ")}</p>
+        {poster && (
+          <div className="mt-3 flex justify-center">
+            <PosterCard poster={poster} width={150} stageBackground={stageBackground(poster.stage)} />
+          </div>
         )}
+        {newDecorations.length > 0 && (
+          <p className="text-sm font-medium mt-2">New on the stage: {newDecorations.join(" · ")}</p>
+        )}
+        {rosetteLines.map((l) => (
+          <p key={l} className="text-sm font-medium mt-1">{l}</p>
+        ))}
         {danceName && <p className="text-xs text-muted mt-2">{danceName}</p>}
         {error && <p className="text-sm text-accent-deep mt-2">⚠ {error}</p>}
         <div className="mt-4 space-y-2">

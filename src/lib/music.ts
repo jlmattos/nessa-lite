@@ -7,7 +7,7 @@
  */
 import { getAudioContext, masterOut, midiToHz, peekAudioContext } from "@/lib/sound";
 
-export type Voice = "box" | "square" | "harp";
+export type Voice = "box" | "square" | "harp" | "waltz";
 export type SongNote = { beat: number; midi: number; gain?: number };
 export type Song = {
   key: string;
@@ -68,6 +68,48 @@ export const HARP_SONG: Song = {
   ],
 };
 
+/**
+ * Candy Waltz: 72 bpm, 3/4, eight bars (GAME-DESIGN.md §7). Oom-pah-pah: a soft
+ * sine bass on one, a light two-note chord on two and three, and a bright,
+ * short triangle melody above with little skips. Every note is in C major
+ * pentatonic (the chords too), so the move notes always fit. Bars: C · Am · D · G
+ * twice, and bar 8 steps down D6 C6 A5 into bar 1's G5, so the loop closes.
+ */
+export const CANDY_WALTZ: Song = {
+  key: "candy_waltz",
+  name: "Candy Waltz",
+  bpm: 72,
+  beatsPerBar: 3,
+  bars: 8,
+  voice: "waltz",
+  notes: [
+    // bar 1 · C
+    { beat: 0, midi: 48, gain: 0.2 }, { beat: 1, midi: 64, gain: 0.11 }, { beat: 1, midi: 67, gain: 0.11 }, { beat: 2, midi: 64, gain: 0.11 }, { beat: 2, midi: 67, gain: 0.11 },
+    { beat: 0, midi: 79, gain: 0.28 }, { beat: 1, midi: 84, gain: 0.28 }, { beat: 1.5, midi: 86, gain: 0.24 }, { beat: 2, midi: 88, gain: 0.26 },
+    // bar 2 · Am
+    { beat: 3, midi: 57, gain: 0.2 }, { beat: 4, midi: 60, gain: 0.11 }, { beat: 4, midi: 64, gain: 0.11 }, { beat: 5, midi: 60, gain: 0.11 }, { beat: 5, midi: 64, gain: 0.11 },
+    { beat: 3, midi: 84, gain: 0.28 }, { beat: 4, midi: 81, gain: 0.28 },
+    // bar 3 · D (D A C)
+    { beat: 6, midi: 50, gain: 0.2 }, { beat: 7, midi: 60, gain: 0.11 }, { beat: 7, midi: 69, gain: 0.11 }, { beat: 8, midi: 60, gain: 0.11 }, { beat: 8, midi: 69, gain: 0.11 },
+    { beat: 6, midi: 81, gain: 0.28 }, { beat: 7, midi: 84, gain: 0.28 }, { beat: 7.5, midi: 86, gain: 0.24 }, { beat: 8, midi: 84, gain: 0.26 },
+    // bar 4 · G (G D A)
+    { beat: 9, midi: 55, gain: 0.2 }, { beat: 10, midi: 62, gain: 0.11 }, { beat: 10, midi: 69, gain: 0.11 }, { beat: 11, midi: 62, gain: 0.11 }, { beat: 11, midi: 69, gain: 0.11 },
+    { beat: 9, midi: 79, gain: 0.28 }, { beat: 11, midi: 74, gain: 0.26 },
+    // bar 5 · C
+    { beat: 12, midi: 48, gain: 0.2 }, { beat: 13, midi: 64, gain: 0.11 }, { beat: 13, midi: 67, gain: 0.11 }, { beat: 14, midi: 64, gain: 0.11 }, { beat: 14, midi: 67, gain: 0.11 },
+    { beat: 12, midi: 79, gain: 0.28 }, { beat: 13, midi: 88, gain: 0.26 }, { beat: 14, midi: 86, gain: 0.26 },
+    // bar 6 · Am
+    { beat: 15, midi: 57, gain: 0.2 }, { beat: 16, midi: 60, gain: 0.11 }, { beat: 16, midi: 64, gain: 0.11 }, { beat: 17, midi: 60, gain: 0.11 }, { beat: 17, midi: 64, gain: 0.11 },
+    { beat: 15, midi: 84, gain: 0.28 }, { beat: 16, midi: 81, gain: 0.28 }, { beat: 16.5, midi: 79, gain: 0.24 }, { beat: 17, midi: 76, gain: 0.26 },
+    // bar 7 · D
+    { beat: 18, midi: 50, gain: 0.2 }, { beat: 19, midi: 60, gain: 0.11 }, { beat: 19, midi: 69, gain: 0.11 }, { beat: 20, midi: 60, gain: 0.11 }, { beat: 20, midi: 69, gain: 0.11 },
+    { beat: 18, midi: 74, gain: 0.28 }, { beat: 19, midi: 81, gain: 0.28 }, { beat: 20, midi: 79, gain: 0.26 },
+    // bar 8 · G, stepping down into bar 1
+    { beat: 21, midi: 55, gain: 0.2 }, { beat: 22, midi: 62, gain: 0.11 }, { beat: 22, midi: 69, gain: 0.11 }, { beat: 23, midi: 62, gain: 0.11 }, { beat: 23, midi: 69, gain: 0.11 },
+    { beat: 21, midi: 86, gain: 0.26 }, { beat: 22, midi: 84, gain: 0.26 }, { beat: 23, midi: 81, gain: 0.26 },
+  ],
+};
+
 /** Carnival Parade: 84 bpm, 4/4, eight bars. A bright little march; the loudest, brightest loop in the set. */
 export const CARNIVAL_PARADE: Song = {
   key: "carnival_parade",
@@ -95,7 +137,13 @@ export const CARNIVAL_PARADE: Song = {
 /** No song: the clock runs at 66 bpm in 3/4 and nothing plays. */
 export const QUIET: Song = { key: "quiet", name: "Quiet", bpm: 66, beatsPerBar: 3, bars: 1, voice: "box", notes: [] };
 
-export const SONGS: Record<string, Song> = { music_box: MUSIC_BOX, harp_song: HARP_SONG, carnival_parade: CARNIVAL_PARADE, quiet: QUIET };
+export const SONGS: Record<string, Song> = {
+  music_box: MUSIC_BOX,
+  harp_song: HARP_SONG,
+  candy_waltz: CANDY_WALTZ,
+  carnival_parade: CARNIVAL_PARADE,
+  quiet: QUIET,
+};
 
 const LOOKAHEAD_SEC = 0.2; // generous: each beat also forces a reflow and a React render
 const TICK_MS = 25;
@@ -278,6 +326,8 @@ class Sequencer {
    * attack, 0.8 s decay. "square": a low-gain square wave, staccato (0.35 s),
    * the brightest sound in the set — the master low-pass keeps it soft.
    * "harp": sine through a 2 kHz low-pass with a 1.2 s decay.
+   * "waltz" splits by register: below C4 a soft sine bass (0.9 s), C4–B4 a
+   * light sine chord note (0.35 s), C5 and up a bright triangle melody (0.5 s).
    */
   private voice(ac: AudioContext, out: AudioNode, n: SongNote, scheduled: number) {
     const f = midiToHz(n.midi);
@@ -307,6 +357,13 @@ class Sequencer {
       a.connect(lp).connect(gain).connect(out);
       a.start(start);
       a.stop(start + 1.25);
+      return;
+    }
+    if (voice === "waltz") {
+      const a = ac.createOscillator();
+      a.type = n.midi >= 72 ? "triangle" : "sine";
+      a.frequency.value = f;
+      env(a, g, n.midi >= 72 ? 0.5 : n.midi >= 60 ? 0.35 : 0.9);
       return;
     }
     if (voice === "square") {

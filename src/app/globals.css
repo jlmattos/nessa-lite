@@ -172,6 +172,37 @@ html[data-reduced-motion="true"] .animate-lite-sparkle {
 .pir[data-move="arabesque"] .pir-upper { animation: pir-arabesque-upper calc(var(--beat) * 2) ease-in-out both; }
 .pir[data-move="arabesque"] .pir-arm-l { animation: pir-arabesque-arm-l calc(var(--beat) * 2) ease-in-out both; }
 
+/* Sauté: two small hops, one per beat. Knees bend at each take-off and landing
+   (legs scaleY from their pivots, as in Plié); the whole figure rises 14 units.
+   At the first take-off four gold sparkles puff up from the floor and fade.
+   The puff stars are opacity 0 at rest, so calm mode leaves them invisible. */
+@keyframes pir-saute-legs {
+  0%, 100%          { transform: translateY(0) scaleY(1); }
+  8%, 42%, 58%, 92% { transform: translateY(0) scaleY(0.92); }
+  25%, 75%          { transform: translateY(-14px) scaleY(1); }
+}
+@keyframes pir-saute-upper {
+  0%, 100%          { transform: translateY(0); }
+  8%, 42%, 58%, 92% { transform: translateY(3px); }
+  25%, 75%          { transform: translateY(-14px); }
+}
+@keyframes pir-saute-puff-l {
+  0%, 6%    { transform: translate(0, 0) scale(0.6); opacity: 0; }
+  16%       { transform: translate(-1px, -2px) scale(1); opacity: 1; }
+  46%, 100% { transform: translate(-4px, -8px) scale(0.8); opacity: 0; }
+}
+@keyframes pir-saute-puff-r {
+  0%, 6%    { transform: translate(0, 0) scale(0.6); opacity: 0; }
+  16%       { transform: translate(1px, -2px) scale(1); opacity: 1; }
+  46%, 100% { transform: translate(4px, -8px) scale(0.8); opacity: 0; }
+}
+.pir-puff path { transform-box: fill-box; transform-origin: center; }
+.pir[data-move="saute"] .pir-leg-l,
+.pir[data-move="saute"] .pir-leg-r  { animation: pir-saute-legs calc(var(--beat) * 2) ease-in-out both; }
+.pir[data-move="saute"] .pir-upper  { animation: pir-saute-upper calc(var(--beat) * 2) ease-in-out both; }
+.pir[data-move="saute"] .pir-puff-l { animation: pir-saute-puff-l calc(var(--beat) * 2) ease-in-out both; }
+.pir[data-move="saute"] .pir-puff-r { animation: pir-saute-puff-r calc(var(--beat) * 2) ease-in-out both; }
+
 /* Bow: the upper body folds, head dips, arms open and lower */
 @keyframes pir-bow-upper { 0%, 100% { transform: rotate(0); } 40%, 75% { transform: rotate(22deg); } }
 @keyframes pir-bow-head  { 0%, 100% { transform: rotate(0); } 40%, 75% { transform: rotate(14deg); } }

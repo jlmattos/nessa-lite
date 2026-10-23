@@ -79,9 +79,13 @@ curtains"); recitals play as shows on one beat clock (title cards, the
 Program's distinct dances, a Finale, her own dance after a late one) with the
 cat friends in the front row; the Bow announces new decorations; Today has
 the Program line, the ending card and the slipper/recital-star states; the
-Stage tab shows its dot; the Friends tab has the Season map. Phase 2 is next:
-the dance editor with word-tile naming, posters, rosettes, and content
-through workout 15 (Sauté, Candy Waltz, Sugar Plum, 8 moves, garlands).
+Stage tab shows its dot; the Friends tab has the Season map. Phase 2 is built:
+the editor inside Choose a dance (palette, slots, Undo, the naming screen with
+word tiles and Save, "Save this dance?", Change, Put away / Put it back),
+posters on the Season map and at a recital's Bow, rosettes (Season map, curtain
+tie-backs, Bow lines), and content through workout 15 (Sauté, Candy Waltz,
+Sugar Plum, 8 moves per dance, flower garlands). Phase 3 (Sparkle catch
+polish: ring pulse, floor glow, `sparkles_caught`) is next.
 
 ## Commands
 
@@ -109,9 +113,12 @@ renders (settings fall back to defaults), but every data query throws.
   stage summary) and handles start / done / undo / finish (Finish bumps the
   high-water mark); `routine.ts` is the editor; `progress.ts` feeds the
   collection page; `dance.ts` is the stage (`getStageData`, `setLook`,
-  `startDance`, `closeCurtains`, `openCurtains`); `settings.ts` never throws.
+  `startDance`, `closeCurtains`, `openCurtains`); `saved-dances.ts` is her own
+  dances (`saveDance` new or in place, `putAwayDance`, `putBackDance`; names are
+  settled there); `settings.ts` never throws.
 - `src/lib/stage-data.ts` — server-only loader (not an action) that turns the
-  tables into the `StageInput` the pure progress library works from.
+  tables into the `StageInput` the pure progress library works from, plus
+  `loadRosetteExtras` (her dances' dates, completed movements).
 - `src/components/` — `today-view.tsx` (schedule strip, movement cards,
   finish flow), `cats.tsx` (the ten figurine cats,
   unchanged from lift-lite), `routine-editor.tsx`, `collection-view.tsx`,
@@ -119,21 +126,23 @@ renders (settings fall back to defaults), but every data query throws.
 - `src/components/dance/` — `pirouette.tsx` (the rig: named SVG groups moved
   by `data-move`, costume colours as CSS variables, overlays per costume),
   `dance-flow.tsx` (the four-step session and its strip), `get-ready.tsx`
-  (look pickers, one row per screen), `choose-dance.tsx` (+ `MoveStrip`),
+  (look pickers, one row per screen), `choose-dance.tsx` (+ `MoveStrip`; My
+  dances), `choreographer.tsx` (the editor and the naming screen), `poster.tsx`,
   `performance.tsx` (curtains, ambient sparkles, Sparkle catch lane, Stop),
   `bow.tsx`, `stage.tsx` (backdrops, decorations, curtains), and
   `spike-view.tsx` (the Phase 0 harness behind `/spike`; remove once Jose
   has tested on the iPad).
 - `src/components/schedule-strip.tsx` (shared by Today and the stage; also
   `RecitalStar`), `program-line.tsx` (the circles-and-star line) and
-  `season-map.tsx` (the Friends tab's Program path).
+  `season-map.tsx` (the Friends tab's Program path, posters, rosettes),
+  `rosette.tsx`.
 - `src/lib/` — `collection.ts` (cats by workout count), `sound.ts` (the one
   AudioContext, master gain + low-pass, chimes and notes), `music.ts` (the
   beat-clock sequencer and the song loops), `dance-player.ts`
   (`useDancePlayer`: drives the rig from the clock, Bow at the end, stops on
   hide/unmount), `dance-content.ts` (the stage catalog: moves, presets),
   `dance-progress.ts` (pure derivations: N, Programs, recitals, unlocks,
-  the Program line, the new-since banner), `settings.ts` (type + defaults),
+  the Program line, the new-since banner, posters, rosettes), `settings.ts` (type + defaults),
   `dates.ts` (`todayLocal`), `format.ts`, `db.ts` (lazy Supabase client).
 - `schema.sql` + `migration-0001-dance.sql` — both applied to the live
   project. No migration runner; add numbered `migration-000N-*.sql` files for

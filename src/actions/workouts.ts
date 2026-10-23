@@ -7,8 +7,8 @@ import { computeEarnedCats, type CatId } from "@/lib/collection";
 import { getSettings, bumpHighWater } from "@/actions/settings";
 import type { Settings } from "@/lib/settings";
 import { loadStageInput } from "@/lib/stage-data";
-import { programLine, todaysNewItem, stageWaiting, todayRow, type ProgramLine } from "@/lib/dance-progress";
-import { announce } from "@/lib/dance-content";
+import { programLine, newTodayLine, stageWaiting, todayRow, type ProgramLine } from "@/lib/dance-progress";
+import type { MoveKey } from "@/lib/dance-content";
 
 export type TodayMovement = {
   movementId: string;
@@ -27,6 +27,8 @@ export type TodayStage = {
   programLine: ProgramLine;
   /** "New today: Swan costume" for the ending card. */
   newToday: string | null;
+  /** On a move day, the new move: Pirouette performs it once when the ending card appears. */
+  newMove: MoveKey | null;
   /** Workout done and she has not danced yet: the slipper is ringed, the tab has its dot. */
   waiting: boolean;
   /** "Done for today" has closed the stage. */
@@ -144,10 +146,11 @@ export async function getTodayData(): Promise<TodayData> {
     const s = await loadStageInput(today);
     const row = todayRow(s.input);
     const latest = [...s.input.rehearsals].sort((a, b) => (a.performedOn < b.performedOn ? 1 : -1))[0];
-    const newItem = todaysNewItem(s.input);
+    const newToday = newTodayLine(s.input);
     stage = {
       programLine: programLine(s.input),
-      newToday: newItem ? `New today: ${announce(newItem)}` : null,
+      newToday: newToday?.text ?? null,
+      newMove: newToday?.move ?? null,
       waiting: stageWaiting(s.input) && !s.workout?.stageClosedAt,
       closed: !!s.workout?.stageClosedAt,
       costume: row?.costume ?? latest?.costume ?? "classic",

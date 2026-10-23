@@ -11,10 +11,10 @@ import {
 } from "@/lib/dance-content";
 import {
   countN, countNMax, programLine, readyRecital, recitalOnTime, decorations, unlockedKeys, slotCount, pirouettesChoice,
-  unlockedMoves, ambientSparkles, newSinceLastTime, todaysNewItem, todayRow as todayRowOf, programDances,
-  type ProgramLine, type StageInput,
+  unlockedMoves, ambientSparkles, newSinceLastTime, newTodayLine, todayRow as todayRowOf, programDances, rosettes,
+  type EarnedRosette, type ProgramLine, type StageInput,
 } from "@/lib/dance-progress";
-import { loadStageInput } from "@/lib/stage-data";
+import { loadRosetteExtras, loadStageInput } from "@/lib/stage-data";
 
 export type Look = { costume: string; stage: string; music: string; sparkle: string };
 export type StageDance = { id: string | null; name: string; moves: MoveKey[]; presetKey: string | null };
@@ -53,6 +53,12 @@ export type StageData = {
   lastDanceId: string | null;
   /** Presets first (catalog order), then hers, newest first. */
   dances: StageDance[];
+  /** Her put-away dances, newest first ("Put it back"). */
+  putAway: StageDance[];
+  /** All her saved dances, put-away ones included: "Dance K" is this + 1. */
+  savedCount: number;
+  /** Every dance name in use (presets and put-away included), for the " 2" rule. */
+  takenNames: string[];
   pirouettesChoice: MoveKey[];
   slotCount: number;
   /** Reached and shipped: what she can pick. */
@@ -68,6 +74,8 @@ export type StageData = {
   earnedCats: CatId[];
   /** Ambient sparkle count with the Sparkle catch lane taken out of the budget. */
   ambient: number;
+  /** Earned rosettes in their fixed order (they hang on the curtain tie-backs); unearned ones never appear. */
+  rosettes: EarnedRosette[];
 };
 
 const DEFAULT_LOOK: Look = { costume: "classic", stage: "practice_room", music: "music_box", sparkle: "gold" };
@@ -92,20 +100,33 @@ export async function getStageData(): Promise<StageData> {
   const nMax = countNMax(input);
 
   const { data: danceRows, error } = await supabase
-    .from("dances").select("*").is("archived_at", null).order("created_at", { ascending: true });
+    .from("dances").select("*").order("created_at", { ascending: true });
   if (error) throw new Error(`Couldn’t load the dances: ${error.message}`);
-  const all: StageDance[] = (danceRows ?? []).map((d) => ({
-    id: d.id as string,
-    name: d.name as string,
-    moves: ((d.moves as string[]) ?? []).filter(isMoveKey),
-    presetKey: (d.preset_key as string | null) ?? null,
+  const rows = (danceRows ?? []).map((d) => ({
+    dance: {
+      id: d.id as string,
+      name: d.name as string,
+      moves: ((d.moves as string[]) ?? []).filter(isMoveKey),
+      presetKey: (d.preset_key as string | null) ?? null,
+    } as StageDance,
+    archived: d.archived_at != null,
   }));
+  const all = rows.filter((r) => !r.archived).map((r) => r.dance);
   // The fixed grid never reorders: presets by catalog order, not by insert time.
   const presets = all
     .filter((d) => d.presetKey)
     .sort((a, b) => PRESET_ORDER.indexOf(a.presetKey!) - PRESET_ORDER.indexOf(b.presetKey!));
   const hers = all.filter((d) => !d.presetKey).reverse();
+  const putAway = rows.filter((r) => r.archived && !r.dance.presetKey).map((r) => r.dance).reverse();
   const danceIds = new Set(all.map((d) => d.id));
+
+  // Rosettes are only shown, never written on; a failed read leaves them off for this load.
+  let earnedRosettes: EarnedRosette[] = [];
+  try {
+    earnedRosettes = rosettes(input, await loadRosetteExtras());
+  } catch {
+    earnedRosettes = [];
+  }
 
   const row = todayRowOf(input);
   const latest = [...input.rehearsals].sort((a, b) => (a.performedOn < b.performedOn ? 1 : -1))[0] ?? null;
@@ -117,7 +138,7 @@ export async function getStageData(): Promise<StageData> {
   const lastDanceId = lastDanced?.danceId && danceIds.has(lastDanced.danceId) ? lastDanced.danceId : null;
 
   const recital = recitalPlan(input);
-  const newToday = todaysNewItem(input);
+  const newToday = newTodayLine(input);
 
   return {
     today,
@@ -133,16 +154,20 @@ export async function getStageData(): Promise<StageData> {
     dancedToday: !!row?.dancedAt,
     lastDanceId,
     dances: [...presets, ...hers],
+    putAway,
+    savedCount: rows.filter((r) => !r.dance.presetKey).length,
+    takenNames: rows.map((r) => r.dance.name),
     pirouettesChoice: pirouettesChoice(nMax),
     slotCount: slotCount(nMax),
     unlockedKeys: [...unlockedKeys(nMax)],
     decorations: decorations(input).map((p) => p.decoration.key),
     recital,
-    bannerToday: newToday ? `New today: ${announce(newToday)}` : null,
+    bannerToday: newToday?.text ?? null,
     bannerSince: row ? [] : newSinceLastTime(input).map(announce),
     earnedCats: computeEarnedCats(n),
     // Two Sparkle catch sparkles can be in flight at once (2-beat moves), so the lane takes two slots.
     ambient: ambientSparkles(n, settings.sparkleAmount, 0, settings.sparkleTaps ? 2 : 0),
+    rosettes: earnedRosettes,
   };
 }
 

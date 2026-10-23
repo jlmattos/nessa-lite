@@ -3,17 +3,18 @@
 import { useCallback, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import type { StageData, Look, PerformancePlan } from "@/actions/dance";
+import type { StageData, StageDance, Look, PerformancePlan } from "@/actions/dance";
 import { openCurtains } from "@/actions/dance";
 import { ScheduleStrip, RecitalStar, type StripItem, type StripState } from "@/components/schedule-strip";
 import { Pirouette } from "@/components/dance/pirouette";
-import { StageBox } from "@/components/dance/stage";
+import { StageBox, type StageRosette } from "@/components/dance/stage";
 import { GetReady } from "@/components/dance/get-ready";
 import { ChooseDance } from "@/components/dance/choose-dance";
+import { Choreographer } from "@/components/dance/choreographer";
 import { Performance } from "@/components/dance/performance";
 import { Bow } from "@/components/dance/bow";
 import { ProgramLineView } from "@/components/program-line";
-import { PROGRAMS } from "@/lib/dance-content";
+import { PROGRAMS, ROSETTES } from "@/lib/dance-content";
 
 type Step = "get_ready" | "choose" | "dance" | "bow";
 const STEPS: Step[] = ["get_ready", "choose", "dance", "bow"];
@@ -30,6 +31,8 @@ export function DanceFlow({ data }: { data: StageData }) {
   const [step, setStep] = useState<Step>("get_ready");
   const [look, setLookState] = useState<Look>(data.look);
   const [danceId, setDanceId] = useState<string | null>(data.lastDanceId);
+  /** The editor, open inside Choose a dance: undefined = closed, null = a new dance. */
+  const [editing, setEditing] = useState<StageDance | null | undefined>(undefined);
   const [plan, setPlan] = useState<PerformancePlan | null>(null);
   const [replay, setReplay] = useState<PerformancePlan | null>(null);
   const [dancedThisVisit, setDancedThisVisit] = useState(false);
@@ -40,6 +43,11 @@ export function DanceFlow({ data }: { data: StageData }) {
   const [decorations, setDecorations] = useState<string[]>(data.decorations);
   const decorationsRef = useRef<string[]>(data.decorations);
   const [newDecorations, setNewDecorations] = useState<string[]>([]);
+  // Rosettes on the tie-backs, frozen at open like the decorations: one earned tonight ("Your first
+  // dance.") hangs from the Bow on, where its line announces it.
+  const toStage = (list: StageData["rosettes"]): StageRosette[] =>
+    list.map((r) => ({ slot: ROSETTES.findIndex((x) => x.key === r.key), color: r.color }));
+  const [rosettesOnOpen] = useState<StageRosette[]>(() => toStage(data.rosettes));
 
   const onBow = useCallback((p: PerformancePlan) => {
     if (p.recital) {
@@ -58,6 +66,9 @@ export function DanceFlow({ data }: { data: StageData }) {
     setStep("bow");
   }, []);
 
+  const liveRosettes = toStage(data.rosettes);
+  const rosettes = step === "bow" || dancedThisVisit ? liveRosettes : rosettesOnOpen;
+
   if (!data.unlocked) {
     return (
       <div className="space-y-3">
@@ -65,6 +76,7 @@ export function DanceFlow({ data }: { data: StageData }) {
           stageKey={look.stage}
           curtains="closed"
           decorations={data.decorations}
+          rosettes={liveRosettes}
           front={<Pirouette size={150} costume={look.costume} sway={!data.settings.reducedMotion} />}
         />
         <div className="rounded-[1.25rem] bg-surface border border-line p-4">
@@ -86,6 +98,7 @@ export function DanceFlow({ data }: { data: StageData }) {
           stageKey={look.stage}
           curtains="closed"
           decorations={data.decorations}
+          rosettes={liveRosettes}
           front={<Pirouette size={150} costume={look.costume} />}
         />
         <div className="rounded-[1.25rem] bg-surface border border-line p-4 text-center">
@@ -134,21 +147,35 @@ export function DanceFlow({ data }: { data: StageData }) {
           data={data}
           look={look}
           decorations={decorations}
+          rosettes={rosettes}
           onLook={(patch) => setLookState((l) => ({ ...l, ...patch }))}
           onNext={() => setStep("choose")}
         />
       )}
-      {step === "choose" && (
+      {step === "choose" && editing !== undefined && (
+        <Choreographer
+          // A fresh editor for each dance it opens on
+          key={editing?.id ?? "new"}
+          data={data}
+          costume={look.costume}
+          music={look.music}
+          editing={editing}
+          onSaved={(id) => { setDanceId(id); setEditing(undefined); }}
+          onLeave={() => setEditing(undefined)}
+        />
+      )}
+      {step === "choose" && editing === undefined && (
         <ChooseDance
           data={data}
           costume={look.costume}
           selectedId={danceId}
           onSelect={setDanceId}
           onNext={() => { setReplay(null); setStep("dance"); }}
+          onEdit={setEditing}
         />
       )}
       {step === "dance" && (
-        <Performance data={data} look={look} danceId={danceId} replay={replay} decorations={decorations} onBow={onBow} />
+        <Performance data={data} look={look} danceId={danceId} replay={replay} decorations={decorations} rosettes={rosettes} onBow={onBow} />
       )}
       {step === "bow" && plan && (
         <Bow
@@ -156,6 +183,7 @@ export function DanceFlow({ data }: { data: StageData }) {
           look={look}
           plan={plan}
           decorations={decorations}
+          rosettes={rosettes}
           newDecorations={newDecorations}
           onDanceAgain={() => { setReplay(plan); setStep("dance"); }}
         />

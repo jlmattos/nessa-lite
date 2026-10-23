@@ -6,7 +6,7 @@ import { COSTUMES } from "@/lib/dance-content";
 /**
  * Pirouette, the ballerina cat — the rig. Same chibi proportions and palette
  * as the figurine cats, drawn as named groups so the player can move her:
- * legs, then the upper body (torso, arms, head). Moves are
+ * legs, then the upper body (torso, arms, head), then Sauté's puff. Moves are
  * CSS keyframes selected by `data-move` on the <svg>; see globals.css.
  * A costume is three colours (CSS custom properties on the root) plus a few
  * overlay shapes, exactly like the cat outfits.
@@ -14,6 +14,16 @@ import { COSTUMES } from "@/lib/dance-content";
 const CREAM = "#fff7ef";
 const INK = "#3d3436";
 const PINK = "#f2b3a6";
+const GOLD = "#e6b422";
+
+/** Sauté's puff: four small gold sparkles at her feet, [x, y, radius]. Left ones drift left, right ones right. */
+const PUFF: [number, number, number][] = [[31, 115, 3.6], [40, 118, 3], [54, 118, 3.6], [63, 114, 3]];
+
+/** A 4-point sparkle star centred on (cx, cy). */
+function star4(cx: number, cy: number, r: number): string {
+  const k = r * 0.22;
+  return `M${cx} ${cy - r}L${cx + k} ${cy - k}L${cx + r} ${cy}L${cx + k} ${cy + k}L${cx} ${cy + r}L${cx - k} ${cy + k}L${cx - r} ${cy}L${cx - k} ${cy - k}Z`;
+}
 
 type CSSVars = CSSProperties & { [key: `--${string}`]: string };
 
@@ -111,6 +121,12 @@ export function Pirouette({
           </g>
         </g>
 
+        {/* Sauté's puff: on the floor, not on her; invisible unless data-move="saute" (globals.css) */}
+        <g className="pir-puff" fill={GOLD}>
+          {PUFF.map(([x, y, r]) => (
+            <path key={x} className={x < 50 ? "pir-puff-l" : "pir-puff-r"} d={star4(x, y, r)} opacity="0" />
+          ))}
+        </g>
       </svg>
     </div>
   );
@@ -134,9 +150,23 @@ function CostumeBehindHead({ overlay }: { overlay: string | null }) {
   }
 }
 
-/** Drawn on the head, after the bun and bow: tiaras, crowns, flakes. (Later costumes.) */
+/** Drawn on the head, after the bun and bow: tiaras, crowns, flakes. */
 function CostumeHead({ overlay }: { overlay: string | null }) {
   switch (overlay) {
+    case "tiara": // Sugar Plum: a gold band with three points on the front of the head, below the bun; the gem takes the tutu colour.
+      // The centre point stops 5 units under the bow knot, so a gold bow and the tiara stay two shapes in a small tile.
+      return (
+        <g>
+          <path
+            d="M35 30 Q50 24 65 30 L64.5 26 L60 19 L56.5 23.5 L50 16 L43.5 23.5 L40 19 L35.5 26 Z"
+            fill={GOLD}
+            stroke="#c9991a"
+            strokeWidth="0.9"
+            strokeLinejoin="round"
+          />
+          <circle cx="50" cy="24.1" r="1.8" style={{ fill: "var(--tutu)" }} stroke="#c9991a" strokeWidth="0.5" />
+        </g>
+      );
     default:
       return null;
   }

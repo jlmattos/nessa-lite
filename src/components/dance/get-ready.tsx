@@ -4,7 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import type { StageData, Look } from "@/actions/dance";
 import { setLook } from "@/actions/dance";
 import { Pirouette } from "@/components/dance/pirouette";
-import { StageBox } from "@/components/dance/stage";
+import { StageBox, type StageRosette } from "@/components/dance/stage";
 import { useDancePlayer } from "@/lib/dance-player";
 import { COSTUMES, STAGES, MUSIC, SPARKLES, QUIET_KEY, NONE_KEY, type CatalogItem } from "@/lib/dance-content";
 import { SONGS, sequencer } from "@/lib/music";
@@ -23,6 +23,7 @@ export function GetReady({
   data,
   look,
   decorations,
+  rosettes,
   onLook,
   onNext,
 }: {
@@ -30,6 +31,8 @@ export function GetReady({
   look: Look;
   /** Tonight's decorations, frozen at open. */
   decorations: string[];
+  /** Rosettes on the curtain tie-backs. */
+  rosettes: StageRosette[];
   onLook: (patch: Partial<Look>) => void;
   onNext: () => void;
 }) {
@@ -84,7 +87,7 @@ export function GetReady({
   return (
     <div className="space-y-3">
       <div>
-        <StageBox stageKey={look.stage} curtains="open" decorations={decorations}>
+        <StageBox stageKey={look.stage} curtains="open" decorations={decorations} rosettes={rosettes}>
           <Pirouette
             ref={rig}
             size={220}

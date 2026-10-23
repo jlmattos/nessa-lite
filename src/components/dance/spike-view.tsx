@@ -4,22 +4,27 @@ import { useEffect, useRef, useState } from "react";
 import { Pirouette } from "@/components/dance/pirouette";
 import { useDancePlayer } from "@/lib/dance-player";
 import { MOVES, PRESET_DANCES, type MoveKey } from "@/lib/dance-content";
-import { CARNIVAL_PARADE, MUSIC_BOX, sequencer, type Song } from "@/lib/music";
+import { CANDY_WALTZ, CARNIVAL_PARADE, MUSIC_BOX, sequencer, type Song } from "@/lib/music";
 import { setVolume, type Volume } from "@/lib/sound";
 
 const SIZES = [120, 170, 220];
-const TEMPOS = [56, 66, 84];
+const TEMPOS = [56, 66, 72, 84];
+const SPIKE_SONGS: Record<string, Song> = { music_box: MUSIC_BOX, candy_waltz: CANDY_WALTZ, carnival_parade: CARNIVAL_PARADE };
+const SPIKE_COSTUMES = [["classic", "Classic"], ["swan", "Swan"], ["sugar_plum", "Sugar Plum"]] as const;
+/** Sauté on the beat, twice back to back (the restart), between other moves. */
+const SAUTE_TEST: MoveKey[] = ["plie", "saute", "saute", "reach", "saute", "arabesque"];
 
 export function SpikeView() {
   const rig = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState(170);
   const [bpm, setBpm] = useState(66);
-  const [songKey, setSongKey] = useState<"music_box" | "carnival_parade" | "quiet">("music_box");
+  const [songKey, setSongKey] = useState<"music_box" | "candy_waltz" | "carnival_parade" | "quiet">("music_box");
+  const [costume, setCostume] = useState<string>("classic");
   const [volume, setVol] = useState<Volume>("soft");
   const [musicOnly, setMusicOnly] = useState(false);
   const player = useDancePlayer(rig, { sound: true });
 
-  const base: Song | null = songKey === "music_box" ? MUSIC_BOX : songKey === "carnival_parade" ? CARNIVAL_PARADE : null;
+  const base: Song | null = SPIKE_SONGS[songKey] ?? null;
   const song: Song | null = base ? { ...base, bpm } : null;
   const busy = player.state === "playing" || player.state === "bowing";
   // After a whole dance, the Bow (the stage plays it on its Bow step).
@@ -52,7 +57,7 @@ export function SpikeView() {
           <div className="absolute inset-y-0 left-0 w-7 bg-accent/60 rounded-r-2xl" aria-hidden />
           <div className="absolute inset-y-0 right-0 w-7 bg-accent/60 rounded-l-2xl" aria-hidden />
           <div className="absolute bottom-0 inset-x-7 h-6 bg-line/70 rounded-t-[50%]" aria-hidden />
-          <Pirouette ref={rig} size={size} sway={player.state !== "idle" || musicOnly} />
+          <Pirouette ref={rig} size={size} costume={costume} sway={player.state !== "idle" || musicOnly} />
           <p className="mt-3 font-semibold text-lg h-7">
             {player.state === "bowing" ? "Bow" : currentName ?? (player.state === "done" ? "The end." : "Pirouette")}
           </p>
@@ -90,13 +95,20 @@ export function SpikeView() {
             </button>
           ))}
           <button
+            onClick={() => playDance(SAUTE_TEST)}
+            disabled={busy}
+            className="h-14 rounded-xl bg-accent text-white font-semibold text-lg shadow-sm active:scale-[0.99] disabled:opacity-50"
+          >
+            Sauté test
+          </button>
+          <button
             onClick={() => { if (song) { setMusicOnly(true); sequencer.start(song); } }}
             disabled={busy || !song}
             className="h-14 rounded-xl border border-line bg-surface font-semibold active:bg-accent-soft disabled:opacity-50"
           >
             Music only
           </button>
-          <button onClick={stopAll} className="h-14 rounded-xl border border-line bg-surface font-semibold active:bg-accent-soft">
+          <button onClick={stopAll} className="col-span-2 h-14 rounded-xl border border-line bg-surface font-semibold active:bg-accent-soft">
             Stop
           </button>
         </div>
@@ -116,8 +128,14 @@ export function SpikeView() {
         </Row>
         <Row label="Music">
           <Chip on={songKey === "music_box"} onClick={() => { setSongKey("music_box"); setBpm(MUSIC_BOX.bpm); }}>Music Box</Chip>
+          <Chip on={songKey === "candy_waltz"} onClick={() => { setSongKey("candy_waltz"); setBpm(CANDY_WALTZ.bpm); }}>Candy Waltz</Chip>
           <Chip on={songKey === "carnival_parade"} onClick={() => { setSongKey("carnival_parade"); setBpm(CARNIVAL_PARADE.bpm); }}>Carnival Parade</Chip>
           <Chip on={songKey === "quiet"} onClick={() => setSongKey("quiet")}>Quiet (clock only)</Chip>
+        </Row>
+        <Row label="Costume">
+          {SPIKE_COSTUMES.map(([key, name]) => (
+            <Chip key={key} on={costume === key} onClick={() => setCostume(key)}>{name}</Chip>
+          ))}
         </Row>
         <Row label="Volume">
           <Chip on={volume === "soft"} onClick={() => { setVol("soft"); setVolume("soft"); }}>soft</Chip>
@@ -134,6 +152,9 @@ export function SpikeView() {
           <li>Little Waltz with Music Box: do moves land on the beat? Does the loop repeat without a hiccup?</li>
           <li>Play a dance, then press the Home button or switch apps. Everything should stop.</li>
           <li>Music Box (gentle) and Carnival Parade (brightest): do they sound like something she’d enjoy, or should we use recorded music?</li>
+          <li>Sauté at 220 px and 84 bpm: two small hops with a gold puff at her feet, smooth and comfortable to watch? Then “Sauté test”: do the back-to-back hops both play, on the beat?</li>
+          <li>Candy Waltz (lively, 72 bpm): does it sound different enough from Music Box, and loop without a hiccup? Are the move notes still louder than the music?</li>
+          <li>Sugar Plum at 120 px and 220 px: does the gold tiara read clearly?</li>
           <li>Rotate the iPad. Does the stage still fit without horizontal scrolling?</li>
         </ol>
       </Card>

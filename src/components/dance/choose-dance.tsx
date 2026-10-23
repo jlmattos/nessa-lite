@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState, useTransition } from "react";
 import type { StageData, StageDance } from "@/actions/dance";
+import { putAwayDance, putBackDance } from "@/actions/saved-dances";
 import { Pirouette } from "@/components/dance/pirouette";
 import { useDancePlayer } from "@/lib/dance-player";
 import { MOVE_BY_KEY, FEATURES, PIROUETTES_CHOICE_NAME, type MoveKey } from "@/lib/dance-content";
@@ -10,8 +11,9 @@ import { setVolume } from "@/lib/sound";
 /**
  * Step 2 (GAME-DESIGN.md §3.7). A fixed 2×2 grid that never reorders:
  * Pirouette's choice, Little Waltz, Twirl Song, New dance (dimmed until the
- * editor ships). Under it, "My dances" (hers, newest first). The last-danced
- * dance is preselected; the default path is one tap.
+ * editor unlocks at 7; a tap opens the editor). Under it, "My dances" (hers,
+ * newest first) with Change and Put away, and the put-away ones with "Put it
+ * back". The last-danced dance is preselected; the default path is one tap.
  *
  * On recital day it shows "Today's dances" instead (read-only, §3.7); on the
  * visit after a late recital, one line above the grid says it plays first.
@@ -22,6 +24,7 @@ export function ChooseDance({
   selectedId,
   onSelect,
   onNext,
+  onEdit,
 }: {
   data: StageData;
   costume: string;
@@ -29,7 +32,25 @@ export function ChooseDance({
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onNext: () => void;
+  /** Open the editor: null for a new dance, or one of hers to change. */
+  onEdit: (dance: StageDance | null) => void;
 }) {
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  function run(fn: () => Promise<void>) {
+    setError(null);
+    startTransition(async () => {
+      try {
+        await fn();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "That didn’t work — try again.");
+      }
+    });
+  }
+  function putAway(d: StageDance) {
+    if (selectedId === d.id) onSelect(null); // its tile is leaving: Pirouette's choice is chosen instead
+    run(() => putAwayDance(d.id!));
+  }
   // The tap Twirl works on every idle Pirouette while the stage is open, as on Get ready.
   const rig = useRef<HTMLDivElement>(null);
   const player = useDancePlayer(rig, { sound: data.settings.sound });
@@ -106,15 +127,47 @@ export function ChooseDance({
           selected={false}
           locked={!editorUnlocked}
           hint={editor.shipped && !data.unlockedKeys.includes(editor.key) ? `at ${editor.unlockAt}` : undefined}
+          onClick={() => onEdit(null)}
         />
       </div>
 
-      {hers.length > 0 && (
+      {error && <p className="text-sm text-accent-deep px-1">⚠ {error}</p>}
+
+      {(hers.length > 0 || data.putAway.length > 0) && (
         <div className="rounded-[1.25rem] bg-surface border border-line p-4">
           <p className="text-xs uppercase tracking-wider text-muted font-semibold">My dances</p>
+          {/* Ten dances (§6): the shelf gets its second line. */}
+          <div className="mt-1 border-t border-line" aria-hidden />
+          {data.rosettes.some((r) => r.key === "ten_dances") && <div className="mt-0.5 border-t border-line" aria-hidden />}
           <div className="mt-2 space-y-2">
-            {hers.map((d) => <MyDance key={d.id} dance={d} selected={selectedId === d.id} onClick={() => onSelect(d.id)} />)}
+            {hers.map((d) => (
+              <MyDance
+                key={d.id}
+                dance={d}
+                selected={selectedId === d.id}
+                busy={isPending}
+                onClick={() => onSelect(d.id)}
+                onChange={editorUnlocked ? () => onEdit(d) : undefined}
+                onPutAway={() => putAway(d)}
+              />
+            ))}
           </div>
+          {data.putAway.length > 0 && (
+            <div className="mt-3 space-y-1">
+              {data.putAway.map((d) => (
+                <div key={d.id} className="flex items-center gap-2 text-sm text-muted">
+                  <span className="flex-1 min-w-0 truncate">{d.name} is put away.</span>
+                  <button
+                    onClick={() => run(() => putBackDance(d.id!))}
+                    disabled={isPending}
+                    className="min-h-11 px-2 underline shrink-0 disabled:opacity-60"
+                  >
+                    Put it back
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -172,15 +225,27 @@ function DanceTile({
   );
 }
 
-function MyDance({ dance, selected, onClick }: { dance: StageDance; selected: boolean; onClick: () => void }) {
+function MyDance({
+  dance, selected, busy, onClick, onChange, onPutAway,
+}: {
+  dance: StageDance; selected: boolean; busy: boolean; onClick: () => void; onChange?: () => void; onPutAway: () => void;
+}) {
   return (
-    <button
-      onClick={onClick}
-      aria-pressed={selected}
-      className={`w-full rounded-xl border px-3 py-2 text-left ${selected ? "border-accent bg-accent-soft/40 ring-2 ring-accent" : "border-line bg-background"}`}
-    >
-      <p className="font-medium">{dance.name}</p>
-      <p className="text-xs text-muted">{dance.moves.map((m) => MOVE_BY_KEY[m].name).join(" · ")}</p>
-    </button>
+    <div className={`rounded-xl border ${selected ? "border-accent bg-accent-soft/40 ring-2 ring-accent" : "border-line bg-background"}`}>
+      <button onClick={onClick} aria-pressed={selected} className="w-full px-3 pt-2 pb-1 text-left min-h-11">
+        <p className="font-medium">{dance.name}</p>
+        <p className="text-xs text-muted">{dance.moves.map((m) => MOVE_BY_KEY[m].name).join(" · ")}</p>
+      </button>
+      <div className="flex justify-end gap-1 px-1 pb-1">
+        {onChange && (
+          <button onClick={onChange} disabled={busy} className="min-h-11 px-3 text-sm font-medium text-accent-deep disabled:opacity-60">
+            Change
+          </button>
+        )}
+        <button onClick={onPutAway} disabled={busy} className="min-h-11 px-3 text-sm text-muted disabled:opacity-60">
+          Put away
+        </button>
+      </div>
+    </div>
   );
 }

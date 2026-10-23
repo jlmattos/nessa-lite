@@ -3,8 +3,8 @@
 import { supabase } from "@/lib/db";
 import { todayLocal } from "@/lib/dates";
 import { computeEarnedCats, type CatId } from "@/lib/collection";
-import { loadStageInput } from "@/lib/stage-data";
-import { seasonMap, type SeasonPath } from "@/lib/dance-progress";
+import { loadRosetteExtras, loadStageInput } from "@/lib/stage-data";
+import { rosettes, seasonMap, type EarnedRosette, type SeasonPath } from "@/lib/dance-progress";
 
 export type ProgressData = {
   totalWorkouts: number;
@@ -14,6 +14,8 @@ export type ProgressData = {
   recent: { id: string; performedOn: string; routineName: string | null; movementCount: number }[];
   /** The Season map (null if the stage could not load; the rest of the page still shows). */
   season: SeasonPath[] | null;
+  /** Earned rosettes, in their fixed order (empty if they could not load). */
+  rosettes: EarnedRosette[];
 };
 
 export async function getProgress(): Promise<ProgressData> {
@@ -38,14 +40,18 @@ export async function getProgress(): Promise<ProgressData> {
   }
 
   let season: SeasonPath[] | null = null;
+  let earned: EarnedRosette[] = [];
   try {
-    season = seasonMap((await loadStageInput(todayLocal())).input);
+    const { input } = await loadStageInput(todayLocal());
+    season = seasonMap(input);
+    earned = rosettes(input, await loadRosetteExtras());
   } catch {
-    season = null;
+    // The season map still shows when only the rosettes failed to load.
   }
 
   return {
     season,
+    rosettes: earned,
     totalWorkouts: all.length,
     workoutsThisMonth: all.filter((w) => (w.performed_on as string) >= monthStart).length,
     earnedCats: computeEarnedCats(all.length),

@@ -6,7 +6,8 @@
 import { supabase } from "@/lib/db";
 import { getSettings } from "@/actions/settings";
 import type { Settings } from "@/lib/settings";
-import type { RehearsalRow, StageInput } from "@/lib/dance-progress";
+import { localDateOf } from "@/lib/dates";
+import type { DancedRow, RehearsalRow, RosetteExtras, StageInput } from "@/lib/dance-progress";
 
 export type TodayWorkout = {
   id: string;
@@ -37,6 +38,19 @@ export async function loadStageInput(today: string): Promise<{ input: StageInput
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .map((row: any) => row.recital_program as number);
 
+  // Every evening she danced, whatever happened to its workout afterwards (rosettes can't be lost).
+  const danced: DancedRow[] = (rows ?? [])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .filter((row: any) => row.danced_at && row.workouts?.performed_on)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((row: any) => ({
+      performedOn: row.workouts.performed_on as string,
+      costume: row.costume as string,
+      stage: row.stage as string,
+      recitalProgram: (row.recital_program as number | null) ?? null,
+      sparklesCaught: (row.sparkles_caught as number) ?? 0,
+    }));
+
   const rehearsals: RehearsalRow[] = (rows ?? [])
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .map((r: any) => ({ r, w: r.workouts as { performed_on?: string; completed_at?: string | null } | null }))
@@ -63,6 +77,7 @@ export async function loadStageInput(today: string): Promise<{ input: StageInput
     highWaterN: settings.highWaterN,
     rehearsals,
     performedPrograms,
+    danced,
   };
 
   return {
@@ -75,6 +90,28 @@ export async function loadStageInput(today: string): Promise<{ input: StageInput
         }
       : null,
     settings,
+  };
+}
+
+/**
+ * What the rosettes need beyond the StageInput (§6): the days her own dances
+ * were made (put-away ones included) and her completed movements. Throws on a
+ * failed read, like loadStageInput.
+ */
+export async function loadRosetteExtras(): Promise<RosetteExtras> {
+  const [d, m] = await Promise.all([
+    supabase.from("dances").select("created_at").eq("is_preset", false),
+    supabase
+      .from("movement_completions")
+      .select("id, workouts!inner(completed_at)", { count: "exact", head: true })
+      .not("workouts.completed_at", "is", null),
+  ]);
+  for (const q of [d, m]) {
+    if (q.error) throw new Error(`Couldn’t load the rosettes: ${q.error.message}`);
+  }
+  return {
+    savedOn: (d.data ?? []).map((row) => localDateOf(row.created_at as string)),
+    completedMoves: m.count ?? 0,
   };
 }
 

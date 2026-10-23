@@ -5,9 +5,11 @@
  * stored, so nothing can go backwards.
  */
 import {
-  CATALOG, LENGTHS, MOVES, PROGRAMS, PROGRAM_BY_NUMBER, BASE_SLOTS, WORKOUTS_PER_PROGRAM, PROGRAMS_PER_SEASON,
-  RECITALS_SHIPPED, PIROUETTES_CHOICE_NAME, announce, type CatalogItem, type MoveKey, type ProgramDef,
+  CATALOG, COSTUMES, LENGTHS, MOVES, MOVE_BY_KEY, PROGRAMS, PROGRAM_BY_NUMBER, ROSETTES, BASE_SLOTS, WORKOUTS_PER_PROGRAM,
+  PROGRAMS_PER_SEASON, RECITALS_SHIPPED, PIROUETTES_CHOICE_NAME, announce, isMoveKey,
+  type CatalogItem, type MoveKey, type ProgramDef, type RosetteKey,
 } from "@/lib/dance-content";
+import { computeEarnedCats } from "@/lib/collection";
 
 export type RehearsalRow = {
   workoutId: string;
@@ -38,6 +40,16 @@ export type StageInput = {
    * nothing clears danced_at or recital_program, so a Reopen never takes one away.
    */
   performedPrograms: number[];
+  /** Every evening she danced, from all rows whatever their workout's state (rosettes can't be lost). */
+  danced: DancedRow[];
+};
+
+export type DancedRow = {
+  performedOn: string;
+  costume: string;
+  stage: string;
+  recitalProgram: number | null;
+  sparklesCaught: number;
 };
 
 const SEASON_ONE_END = WORKOUTS_PER_PROGRAM * PROGRAMS_PER_SEASON; // 50
@@ -160,11 +172,34 @@ export function newlyUnlocked(fromN: number, toN: number, nMax: number): Catalog
   ).sort((a, b) => a.unlockAt - b.unlockAt);
 }
 
-/** The one shipped item whose day is today's completed workout (for the ending card). */
+/**
+ * The one shipped item whose day is today's completed workout (for the ending
+ * card and the banner's first line). Unlike "New since last time", a feature
+ * counts here: the editor is the new thing on workout 7.
+ */
 export function todaysNewItem(input: StageInput): CatalogItem | null {
   if (!input.todayCompleted) return null;
   const n = countN(input);
-  return newlyUnlocked(n - 1, n, countNMax(input))[0] ?? null;
+  if (n < FIRST_ITEM_DAY) return null;
+  return CATALOG.find((i) => i.shipped && i.unlockAt === n && seasonVisible(i, countNMax(input))) ?? null;
+}
+
+/**
+ * The ending card's and the banner's sentence for today's item (§3.4), and the
+ * move Pirouette performs once on the ending card on a move day.
+ */
+export function newTodayLine(input: StageInput): { text: string; move: MoveKey | null } | null {
+  const item = todaysNewItem(input);
+  if (!item) return null;
+  if (item.kind === "move" && isMoveKey(item.key)) {
+    const inChoice = pirouettesChoice(countNMax(input)).includes(item.key);
+    return {
+      text: `New today: ${announce(item)}.${inChoice ? ` ${PIROUETTES_CHOICE_NAME} has ${item.name} now.` : ""}`,
+      move: item.key,
+    };
+  }
+  if (item.key === "new_dance") return { text: "New today: New dance. You can make your own dances now.", move: null };
+  return { text: `New today: ${announce(item)}`, move: null };
 }
 
 // ── The Program line on Today (§3.0) ────────────────────────────────────────
@@ -233,10 +268,15 @@ export function todayRow(input: StageInput): RehearsalRow | null {
 
 /**
  * The distinct dances of Program P, positions 1–4 in order, for a recital.
- * A position with no row or no snapshot plays Pirouette's choice as it is now (moves null).
+ * A position with no row or no snapshot plays Pirouette's choice (moves null)
+ * as it is at `fallbackN`: now for a recital, the Program's end for a poster.
  */
-export function programDances(input: StageInput, program: number): { name: string; moves: MoveKey[] | null }[] {
-  const nMax = countNMax(input);
+export function programDances(
+  input: StageInput,
+  program: number,
+  fallbackN: number = countNMax(input)
+): { name: string; moves: MoveKey[] | null }[] {
+  const nMax = fallbackN;
   const seen = new Set<string>();
   const out: { name: string; moves: MoveKey[] | null }[] = [];
   for (let position = 1; position < WORKOUTS_PER_PROGRAM; position++) {
@@ -280,6 +320,8 @@ export type SeasonSlot = {
   done: boolean;
   /** The Program she is in; on recital night it is both done and here. */
   now: boolean;
+  /** Its poster, once done (Program 1's appears retroactively: it is derived). */
+  poster: Poster | null;
 };
 
 export type SeasonPath = { season: 1 | 2; slots: SeasonSlot[] };
@@ -288,6 +330,7 @@ export type SeasonPath = { season: 1 | 2; slots: SeasonSlot[] };
 export function seasonMap(input: StageInput): SeasonPath[] {
   const top = maxPerformed(input);
   const current = programOf(Math.max(1, todayN(input)));
+  const all = posters(input);
   const path = (season: 1 | 2): SeasonPath => ({
     season,
     slots: PROGRAMS.filter((p) => (season === 1 ? p.program <= PROGRAMS_PER_SEASON : p.program > PROGRAMS_PER_SEASON)).map((p) => ({
@@ -296,7 +339,113 @@ export function seasonMap(input: StageInput): SeasonPath[] {
       color: p.color,
       done: p.program <= top,
       now: p.program === current,
+      poster: all.get(p.program) ?? null,
     })),
   });
   return top >= PROGRAMS_PER_SEASON ? [path(1), path(2)] : [path(1)];
 }
+
+// ── Posters (§5.4) ──────────────────────────────────────────────────────────
+
+export type Poster = {
+  program: number;
+  theme: string;
+  color: string;
+  costume: string;
+  stage: string;
+  /** One row of move icons per distinct dance. */
+  dances: MoveKey[][];
+};
+
+/** A poster from its parts; the Bow builds tonight's from what just played. */
+export function posterFor(program: number, look: { costume: string; stage: string }, dances: MoveKey[][]): Poster {
+  const def = PROGRAM_BY_NUMBER.get(program);
+  return {
+    program,
+    theme: def?.theme ?? `Program ${program}`,
+    color: def?.color ?? "#f7c6d9",
+    costume: look.costume,
+    stage: look.stage,
+    dances: dances.map((d) => d.filter(isMoveKey)).filter((d) => d.length > 0),
+  };
+}
+
+/**
+ * Every poster she has, keyed by Program: one for each Program at or below the
+ * highest performed recital, so a skipped recital's poster derives too. The
+ * look is the row that performed the recital, or the Program's last rehearsal
+ * row; a missing snapshot is Pirouette's choice as it was at the Program's
+ * end, so a poster never changes afterwards.
+ */
+export function posters(input: StageInput): Map<number, Poster> {
+  const out = new Map<number, Poster>();
+  const top = maxPerformed(input);
+  for (let program = 1; program <= top; program++) {
+    const inProgram = input.rehearsals
+      .map((r) => ({ r, o: ordinalOf(input, r.performedOn) }))
+      .filter(({ o }) => programOf(o) === program)
+      .sort((a, b) => a.o - b.o)
+      .map(({ r }) => r);
+    const performer = input.rehearsals.find((r) => r.recitalProgram === program && r.dancedAt);
+    const lookRow = performer ?? inProgram[inProgram.length - 1] ?? null;
+    const endN = program * WORKOUTS_PER_PROGRAM;
+    const dances = programDances(input, program, endN).map((d) => d.moves ?? pirouettesChoice(endN));
+    out.set(program, posterFor(program, lookRow ?? { costume: "classic", stage: "practice_room" }, dances));
+  }
+  return out;
+}
+
+// ── Rosettes (§6) ───────────────────────────────────────────────────────────
+
+export type RosetteExtras = {
+  /** Local dates (HOME_TZ) her non-preset dances were made, put-away ones included. */
+  savedOn: string[];
+  /** movement_completions on completed workouts. */
+  completedMoves: number;
+};
+
+export type EarnedRosette = { key: RosetteKey; name: string; color: string; earnedToday: boolean; line: string | null };
+
+const SEASON_ONE_COSTUMES = COSTUMES.filter((c) => c.season === 1);
+
+/**
+ * Every rosette she has earned, in the fixed order, derived from N_max, her
+ * dances, her evenings on the stage and her completed movements. Nothing here
+ * reads a score or a calendar, and nothing can be lost: evenings come from
+ * every row whatever its workout's state, and counts use N_max.
+ */
+export function rosettes(input: StageInput, extras: RosetteExtras): EarnedRosette[] {
+  const nMax = countNMax(input);
+  const today = input.today;
+  const danced = [...input.danced].sort((a, b) => (a.performedOn < b.performedOn ? -1 : 1));
+  const firstDance = danced[0]?.performedOn ?? null;
+  const firstRecital = danced.find((d) => d.recitalProgram != null)?.performedOn ?? null;
+  const firstCatch = danced.find((d) => d.sparklesCaught > 0)?.performedOn ?? null;
+  const saved = [...extras.savedOn].sort();
+  const top = maxPerformed(input);
+
+  // When each was earned, or null if not yet. Only the first four can be dated to an evening.
+  const earned: Record<RosetteKey, string | null | true> = {
+    first_dance: firstDance,
+    first_recital: firstRecital,
+    made_a_dance: saved[0] ?? null,
+    caught_a_sparkle: firstCatch,
+    three_costumes: new Set(danced.map((d) => d.costume)).size >= 3 ? true : null,
+    five_stages: new Set(danced.map((d) => d.stage)).size >= 5 ? true : null,
+    ten_dances: saved.length >= 10 ? true : null,
+    hundred_moves: extras.completedMoves >= 100 ? true : null,
+    all_cats: computeEarnedCats(nMax).length === 10 ? true : null,
+    // All eight Season One costumes reached, and every one of them has shipped (no promise it can't keep).
+    all_costumes: nMax >= 47 && SEASON_ONE_COSTUMES.every((c) => c.shipped) ? true : null,
+    season_one: top >= PROGRAMS_PER_SEASON ? true : null,
+    season_two: top >= PROGRAMS_PER_SEASON * 2 ? true : null,
+  };
+  return ROSETTES.filter((r) => earned[r.key] != null).map((r) => {
+    const when = earned[r.key];
+    const earnedToday = when === today;
+    return { key: r.key, name: r.name, color: r.color, earnedToday, line: earnedToday ? r.line : null };
+  });
+}
+
+/** The move icons of a dance, for posters and strips. */
+export const moveIcons = (moves: MoveKey[]) => moves.map((m) => MOVE_BY_KEY[m]?.icon ?? "");

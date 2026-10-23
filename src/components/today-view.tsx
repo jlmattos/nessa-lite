@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { TodayData, TodayMovement } from "@/actions/workouts";
@@ -13,6 +13,8 @@ import { ScheduleStrip, RecitalStar, type StripItem } from "@/components/schedul
 import { ProgramLineView } from "@/components/program-line";
 import { targetLabel } from "@/lib/format";
 import { playDone, playFinish, playStart } from "@/lib/sound";
+import { useDancePlayer } from "@/lib/dance-player";
+import type { MoveKey } from "@/lib/dance-content";
 
 /**
  * Today (GAME-DESIGN.md §3.0–§3.4, §3.10). The schedule strip shows the whole
@@ -201,7 +203,11 @@ export function TodayView({ data }: { data: TodayData }) {
         <Card className="p-4 border-success/50 bg-success-soft space-y-3">
           <div className="flex items-center gap-4">
             <div className="shrink-0">
-              <Pirouette size={56} costume={stage?.costume ?? "classic"} />
+              <EndingPirouette
+                costume={stage?.costume ?? "classic"}
+                // On a move day she performs the new move once when the card appears (§3.4); calm mode keeps her still.
+                newMove={!closed && !calm ? stage?.newMove ?? null : null}
+              />
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-success text-lg">{closed ? "Today is done." : "Workout done."}</p>
@@ -293,6 +299,20 @@ export function TodayView({ data }: { data: TodayData }) {
       )}
     </div>
   );
+}
+
+/** The ending card's Pirouette: static, except one silent performance of today's new move. */
+function EndingPirouette({ costume, newMove }: { costume: string; newMove: MoveKey | null }) {
+  const rig = useRef<HTMLDivElement>(null);
+  // Silent: the card appears without a tap, and sound only ever follows a tap.
+  const { playMove } = useDancePlayer(rig, { sound: false });
+  const played = useRef(false);
+  useEffect(() => {
+    if (!newMove || played.current) return;
+    played.current = true;
+    playMove(newMove);
+  }, [newMove, playMove]);
+  return <Pirouette ref={rig} size={56} costume={costume} />;
 }
 
 function MovementCard({

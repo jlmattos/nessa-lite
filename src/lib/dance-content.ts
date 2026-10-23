@@ -47,7 +47,7 @@ export const MOVES: MoveDef[] = [
   move("reach", "Reach", "🙌", 2, 76, 1, true),            // E5
   move("twirl", "Twirl", "🌀", 4, 79, 1, true),            // G5
   move("arabesque", "Arabesque", "🦵", 2, 81, 1, true),    // A5
-  move("saute", "Sauté", "⬆️", 2, 84, 9, false),           // C6
+  move("saute", "Sauté", "⬆️", 2, 84, 9, true),            // C6 — Phase 2
   move("curtsy", "Curtsy", "🙇", 2, 74, 27, false),        // D5
   move("glide", "Glide", "↔️", 4, 76, 33, false),          // E5
   move("grand_spin", "Big spin", "💫", 4, 79, 41, true, { midi2: 84 }), // G5 + C6 — rig built in Phase 0
@@ -77,7 +77,7 @@ const costume = (key: string, name: string, unlockAt: number, colors: CostumeDef
 export const COSTUMES: CostumeDef[] = [
   costume("classic", "Classic", 1, { tutu: "#f7c6d9", leotard: "#ec9fbd", bow: "#e26d5c" }, null, true),
   costume("swan", "Swan", 4, { tutu: "#fff7ef", leotard: "#fff7ef", bow: "#e26d5c" }, "feathers", true),
-  costume("sugar_plum", "Sugar Plum", 13, { tutu: "#d8c3f0", leotard: "#d8c3f0", bow: "#e6b422" }, "tiara", false),
+  costume("sugar_plum", "Sugar Plum", 13, { tutu: "#d8c3f0", leotard: "#d8c3f0", bow: "#e6b422" }, "tiara", true), // Phase 2
   costume("rose_garden", "Rose Garden", 18, { tutu: "#f7c6d9", leotard: "#7fb069", bow: "#e26d5c" }, "flower_crown", false),
   costume("snowflake", "Snowflake", 23, { tutu: "#dbeefb", leotard: "#fff7ef", bow: "#8ab8d8" }, "snowflake", false),
   costume("starlight", "Starlight", 37, { tutu: "#3d3436", leotard: "#3d3436", bow: "#e6b422" }, "stars", false),
@@ -123,7 +123,7 @@ const music = (key: string, name: string, unlockAt: number, tempoWord: string, s
 export const MUSIC: MusicDef[] = [
   music("music_box", "Music Box", 1, "gentle", true),
   music("harp_song", "Harp Song", 2, "slow", true),
-  music("candy_waltz", "Candy Waltz", 11, "lively", false),
+  music("candy_waltz", "Candy Waltz", 11, "lively", true), // Phase 2
   music("silver_bells", "Silver Bells", 21, "gentle", false),
   music("rain_piano", "Rain Piano", 26, "slow", false),
   music("puddle_hop", "Puddle Hop", 29, "bouncy", false),
@@ -154,14 +154,14 @@ export const SPARKLES: SparkleDef[] = [
 // ── Length and features ──────────────────────────────────────────────────────
 export type LengthDef = CatalogItem & { kind: "length"; slots: number };
 export const LENGTHS: LengthDef[] = [
-  { key: "slots_8", name: "Longer dances: 8 moves", kind: "length", kindWord: "", unlockAt: 14, season: 1, shipped: false, slots: 8 },
+  { key: "slots_8", name: "Longer dances: 8 moves", kind: "length", kindWord: "", unlockAt: 14, season: 1, shipped: true, slots: 8 }, // Phase 2
   { key: "slots_10", name: "Longer dances: 10 moves", kind: "length", kindWord: "", unlockAt: 28, season: 1, shipped: false, slots: 10 },
   { key: "slots_12", name: "Longer dances: 12 moves", kind: "length", kindWord: "", unlockAt: 42, season: 1, shipped: false, slots: 12 },
 ];
 export const BASE_SLOTS = 6;
 
 export const FEATURES: CatalogItem[] = [
-  { key: "new_dance", name: "New dance", kind: "feature", kindWord: "", unlockAt: 7, season: 1, shipped: false },
+  { key: "new_dance", name: "New dance", kind: "feature", kindWord: "", unlockAt: 7, season: 1, shipped: true }, // Phase 2: the editor
   { key: "second_lane", name: "Sparkles from both sides", kind: "feature", kindWord: "", unlockAt: 34, season: 1, shipped: false },
 ];
 
@@ -169,9 +169,10 @@ export const FEATURES: CatalogItem[] = [
 export const CATALOG: CatalogItem[] = [...COSTUMES, ...STAGES, ...MUSIC, ...SPARKLES, ...MOVES, ...LENGTHS, ...FEATURES];
 export const ITEM_BY_KEY = new Map(CATALOG.map((i) => [i.key, i]));
 
-/** "Swan costume", "Sauté, a new move", "Longer dances: 8 moves". */
+/** "Swan costume", "Sauté, a new move", "longer dances, 8 moves", "New dance". */
 export function announce(item: CatalogItem): string {
   if (item.kind === "move") return `${item.name}, a new move`;
+  if (item.kind === "length") return `longer dances, ${(item as LengthDef).slots} moves`;
   if (!item.kindWord) return item.name;
   return `${item.name} ${item.kindWord}`;
 }
@@ -216,8 +217,33 @@ export const PRESET_DANCES: Record<string, { name: string; moves: MoveKey[] }> =
   twirl_song: { name: "Twirl Song", moves: ["reach", "twirl", "arabesque", "twirl"] },
 };
 
-/** Two rows of word tiles for naming a dance (confirmed by Jose). None is a move, preset, loop, item or theme name. */
+/** Two rows of word tiles for naming a dance (§10 #7). None is a move, preset, loop, item or theme name. */
 export const NAME_WORDS: [string[], string[]] = [
   ["Moon", "Star", "Cloud", "River", "Rose", "Sunny"],
   ["Waltz", "Ballet", "Ribbon", "Dream", "Song", "Steps"],
+];
+
+// ── Rosettes (§6) ────────────────────────────────────────────────────────────
+export type RosetteKey =
+  | "first_dance" | "first_recital" | "made_a_dance" | "caught_a_sparkle" | "three_costumes" | "five_stages"
+  | "ten_dances" | "hundred_moves" | "all_cats" | "all_costumes" | "season_one" | "season_two";
+
+/**
+ * Every rosette, in the fixed order they hang. Names say what happened; `line`
+ * is the Bow card's sentence on the day it is earned (only some have one).
+ * Unearned rosettes are never shown anywhere.
+ */
+export const ROSETTES: { key: RosetteKey; name: string; color: string; line: string | null }[] = [
+  { key: "first_dance", name: "First dance", color: "#e6b422", line: "Your first dance." },
+  { key: "first_recital", name: "First recital", color: "#e6b422", line: "Your first recital." },
+  { key: "made_a_dance", name: "Made a dance", color: "#ec9fbd", line: "You made a dance." },
+  { key: "caught_a_sparkle", name: "Caught a sparkle", color: "#f2c14e", line: "You caught a sparkle." },
+  { key: "three_costumes", name: "Three costumes", color: "#d8c3f0", line: null },
+  { key: "five_stages", name: "Five stages", color: "#8ab8d8", line: null },
+  { key: "ten_dances", name: "Ten dances", color: "#ec9fbd", line: null },
+  { key: "hundred_moves", name: "100 moves", color: "#7fb069", line: null },
+  { key: "all_cats", name: "All ten cats", color: "#e26d5c", line: null },
+  { key: "all_costumes", name: "All eight costumes", color: "#e6b422", line: null },
+  { key: "season_one", name: "Season One", color: "#e6b422", line: null },
+  { key: "season_two", name: "Season Two", color: "#e6b422", line: null },
 ];

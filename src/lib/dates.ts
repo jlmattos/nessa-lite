@@ -9,3 +9,8 @@ const HOME_TZ = process.env.HOME_TZ ?? "America/New_York";
 export function todayLocal(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: HOME_TZ }).format(new Date());
 }
+
+/** The home-timezone date (YYYY-MM-DD) of a stored timestamp. */
+export function localDateOf(iso: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: HOME_TZ }).format(new Date(iso));
+}
