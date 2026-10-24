@@ -50,7 +50,9 @@ export const MOVES: MoveDef[] = [
   move("saute", "Sauté", "⬆️", 2, 84, 9, true),            // C6 — Phase 2
   move("curtsy", "Curtsy", "🙇", 2, 74, 27, false),        // D5
   move("glide", "Glide", "↔️", 4, 76, 33, false),          // E5
-  move("grand_spin", "Big spin", "💫", 4, 79, 41, true, { midi2: 84 }), // G5 + C6 — rig built in Phase 0
+  // G5 + C6. The rig is built (Phase 0), but it ships with its burst in Phase 4 and only once the
+  // 1080° spin has passed the iPad comfort check (§10 #12): until then it carries no number.
+  move("grand_spin", "Big spin", "💫", 4, 79, 41, false, { midi2: 84 }),
   move("wave_arms", "Wave arms", "👋", 2, 81, 64, false),
   move("final_pose", "Final pose", "✨", 4, 84, 84, false),
 ];

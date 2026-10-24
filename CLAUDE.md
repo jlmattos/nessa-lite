@@ -143,9 +143,12 @@ renders (settings fall back to defaults), but every data query throws.
   hide/unmount), `dance-content.ts` (the stage catalog: moves, presets),
   `dance-progress.ts` (pure derivations: N, Programs, recitals, unlocks,
   the Program line, the new-since banner, posters, rosettes), `settings.ts` (type + defaults),
-  `dates.ts` (`todayLocal`), `format.ts`, `db.ts` (lazy Supabase client).
-- `schema.sql` + `migration-0001-dance.sql` — both applied to the live
-  project. No migration runner; add numbered `migration-000N-*.sql` files for
+  `dates.ts` (`todayLocal`, `localDateOf`), `format.ts`, `db.ts` (lazy Supabase
+  client), `action-result.ts` (`attempt` / `Friendly` / `unwrap`), `leave-guard.ts`
+  (the editor's "Save this dance?" asked from the bottom nav too).
+- `schema.sql`, `migration-0001-dance.sql` and `migration-0002-snapshots.sql`
+  (the look a dance was first danced in, poster snapshots, `high_water_moves`)
+  — all applied to the live project. No migration runner; add numbered `migration-000N-*.sql` files for
   schema changes and apply them by hand (or through the Supabase connector).
 - `scripts/backup.mjs` + `.github/workflows/backup.yml` — nightly snapshot to
   `backups/latest.json`. The schedule is on; the job skips cleanly until the
@@ -193,8 +196,16 @@ renders (settings fall back to defaults), but every data query throws.
   AudioContext behind a master gain and a 6 kHz low-pass), only started inside
   a tap handler, only after checking `settings.sound`. Chimes stay louder than
   music. Every start and stop is a gain ramp.
-- Server actions throw plain `Error` with a friendly message and always
-  `revalidatePath` after a write. Client components catch and show the message.
+- Server actions the client calls return an `ActionResult`
+  (`src/lib/action-result.ts`): the body runs inside `attempt(...)`, a
+  sentence meant for her is thrown as `Friendly`, anything else becomes one
+  plain sentence (details go to the server log), and the client wraps the call
+  in `unwrap(await action(...))`, which throws an `Error` with those words for
+  the existing catch blocks. A production build hides the message of anything
+  thrown across the action boundary, so never rely on a thrown message reaching
+  the screen. Always `revalidatePath` after a write. Loaders called from server
+  components (`getTodayData`, `getStageData`, `getProgress`) still throw;
+  `error.tsx` catches those.
 - No model identifiers in commits, code, or comments.
 
 ## Verifying changes

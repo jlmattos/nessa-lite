@@ -42,9 +42,9 @@ export async function getProgress(): Promise<ProgressData> {
   let season: SeasonPath[] | null = null;
   let earned: EarnedRosette[] = [];
   try {
-    const { input } = await loadStageInput(todayLocal());
+    const { input, settings } = await loadStageInput(todayLocal());
     season = seasonMap(input);
-    earned = rosettes(input, await loadRosetteExtras());
+    earned = rosettes(input, await loadRosetteExtras(settings.highWaterMoves));
   } catch {
     // The season map still shows when only the rosettes failed to load.
   }

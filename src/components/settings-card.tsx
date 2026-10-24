@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Settings } from "@/lib/settings";
 import { updateSettings } from "@/actions/settings";
 import { setVolume } from "@/lib/sound";
+import { unwrap } from "@/lib/action-result";
 
 /**
  * The preferences card (GAME-DESIGN.md §7 Controls), in the doc's order.
@@ -17,7 +18,7 @@ export function SettingsCard({ settings }: { settings: Settings }) {
 
   function save(patch: Partial<Settings>) {
     startTransition(async () => {
-      await updateSettings(patch);
+      unwrap(await updateSettings(patch));
       router.refresh();
     });
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import type { StageData, StageDance } from "@/actions/dance";
 import { saveDance } from "@/actions/saved-dances";
 import { Pirouette } from "@/components/dance/pirouette";
@@ -8,6 +8,8 @@ import { useDancePlayer } from "@/lib/dance-player";
 import { MOVES, NAME_WORDS, QUIET_KEY, type MoveKey } from "@/lib/dance-content";
 import { SONGS } from "@/lib/music";
 import { setVolume } from "@/lib/sound";
+import { unwrap } from "@/lib/action-result";
+import { setLeaveGuard } from "@/lib/leave-guard";
 
 type Words = [string | null, string | null];
 
@@ -65,6 +67,10 @@ export function Choreographer({
   const initialWords = useRef<Words>(wordsOf(editing?.name));
   const [words, setWords] = useState<Words>(initialWords.current);
   const [asking, setAsking] = useState(false);
+  /** Where she was going when "Save this dance?" was asked from a tab tap. */
+  const pendingGo = useRef<(() => void) | null>(null);
+  const askRef = useRef<HTMLDivElement>(null);
+  const [glowKey, setGlowKey] = useState(0);
   const [glow, setGlow] = useState(false);
   const glowTimer = useRef<number | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -80,12 +86,34 @@ export function Choreographer({
     ? moves.join(",") !== editing.moves.join(",") || words[0] !== initialWords.current[0] || words[1] !== initialWords.current[1]
     : moves.length > 0;
   const name = previewName(words, editing, data);
+  const unsaved = changed && moves.length > 0;
+
+  // The bottom nav asks first too: leaving with unsaved moves asks once, wherever she taps.
+  useEffect(() => {
+    if (!unsaved) {
+      setLeaveGuard(null);
+      return;
+    }
+    setLeaveGuard((go) => {
+      pendingGo.current = go;
+      setAsking(true);
+      return true;
+    });
+    return () => setLeaveGuard(null);
+  }, [unsaved]);
+  useEffect(() => {
+    if (asking) askRef.current?.scrollIntoView({ block: "nearest", behavior: "instant" as ScrollBehavior });
+  }, [asking]);
+  useEffect(() => () => {
+    if (glowTimer.current != null) clearTimeout(glowTimer.current);
+  }, []);
 
   function addMove(key: MoveKey) {
     setVolume(data.settings.volume); // inside the tap: wakes the audio on iPad
     if (moves.length >= data.slotCount) {
       // Full: the strip glows once and no note plays, so the tap still does something.
       if (glowTimer.current != null) clearTimeout(glowTimer.current);
+      setGlowKey((k) => k + 1);
       setGlow(true);
       glowTimer.current = window.setTimeout(() => setGlow(false), 450);
       return;
@@ -98,8 +126,13 @@ export function Choreographer({
     setError(null);
     startTransition(async () => {
       try {
-        const saved = await saveDance({ id: editing?.id ?? null, words, moves });
-        onSaved(saved.id);
+        const saved = unwrap(await saveDance({ id: editing?.id ?? null, words, moves }));
+        // In the same transition as the refreshed page data, so the new dance and its selection arrive together.
+        startTransition(() => {
+          setLeaveGuard(null);
+          onSaved(saved.id);
+          pendingGo.current?.();
+        });
       } catch (e) {
         setError(e instanceof Error ? e.message : "That didn’t save — try again.");
       }
@@ -107,11 +140,19 @@ export function Choreographer({
   }
 
   function leave() {
-    if (changed && moves.length > 0) {
+    if (unsaved) {
+      pendingGo.current = null;
       setAsking(true);
       return;
     }
     onLeave();
+  }
+
+  function dontSave() {
+    setLeaveGuard(null);
+    const go = pendingGo.current;
+    onLeave();
+    go?.();
   }
 
   function pickWord(row: 0 | 1, word: string) {
@@ -124,17 +165,41 @@ export function Choreographer({
 
   const top = (
     <div className="rounded-[1.25rem] bg-surface border border-line p-4 flex items-start gap-3">
-      <Pirouette ref={rig} size={120} costume={costume} />
+      <Pirouette
+        ref={rig}
+        size={120}
+        costume={costume}
+        onTap={() => { setVolume(data.settings.volume); player.playMove("twirl", bpm); }}
+      />
       <div className="flex-1 min-w-0">
         <p className="text-xs uppercase tracking-wider text-muted font-semibold">{editing ? "Change the dance" : "New dance"}</p>
-        <p className="text-sm mt-1">Tap a move. It goes in the next empty slot.</p>
-        <div className={`mt-2 rounded-xl transition-shadow duration-300 ${glow ? "shadow-[0_0_0_3px_#e6b422]" : "shadow-[0_0_0_3px_transparent]"}`}>
+        {screen === "moves" && <p className="text-sm mt-1">Tap a move. It goes in the next empty slot.</p>}
+        <div className="relative mt-2 rounded-xl">
           <EditorStrip
             moves={moves}
             slots={slots}
-            onRemove={screen === "moves" ? (i) => setMoves((m) => m.filter((_, k) => k !== i)) : undefined}
+            onRemove={screen === "moves" && !asking ? (i) => setMoves((m) => m.filter((_, k) => k !== i)) : undefined}
           />
+          {glow && (
+            <span key={glowKey} aria-hidden className="pointer-events-none absolute inset-0 rounded-xl ring-[3px] ring-gold animate-lite-glow" />
+          )}
         </div>
+      </div>
+    </div>
+  );
+
+  // "Save this dance?" — asked once, from "Back to the dances" or a tab tap, on either screen.
+  const askCard = (
+    <div ref={askRef} className="rounded-[1.25rem] bg-surface border border-line p-4 space-y-3">
+      <p className="text-center font-semibold">Save this dance?</p>
+      {error && <p className="text-sm text-accent-deep text-center">⚠ {error}</p>}
+      <div className="flex gap-2">
+        <button onClick={save} disabled={isPending} className="flex-1 h-14 rounded-xl bg-accent text-white font-semibold disabled:opacity-60">
+          Save
+        </button>
+        <button onClick={dontSave} disabled={isPending} className="flex-1 h-14 rounded-xl border border-line font-semibold">
+          Don’t save
+        </button>
       </div>
     </div>
   );
@@ -147,15 +212,16 @@ export function Choreographer({
           <p className="text-xs uppercase tracking-wider text-muted font-semibold">Name the dance</p>
           <p className="text-2xl font-bold mt-1 min-h-8">{name}</p>
           {NAME_WORDS.map((row, r) => (
-            <div key={r} className="mt-3 grid grid-cols-3 gap-2" role="group" aria-label={r === 0 ? "First word" : "Second word"}>
+            <div key={r} className={`grid grid-cols-6 gap-1.5 ${r === 0 ? "mt-3" : "mt-4 pt-4 border-t border-line"}`} role="group" aria-label={r === 0 ? "First word" : "Second word"}>
               {row.map((w) => {
                 const on = words[r] === w;
                 return (
                   <button
                     key={w}
                     onClick={() => pickWord(r as 0 | 1, w)}
+                    disabled={asking}
                     aria-pressed={on}
-                    className={`h-14 rounded-xl border text-lg font-semibold ${on ? "bg-accent-soft/60 border-accent ring-2 ring-accent" : "bg-background border-line"}`}
+                    className={`h-14 rounded-xl border text-sm font-semibold px-0.5 ${on ? "bg-accent-soft/60 border-accent ring-2 ring-accent" : "bg-background border-line"}`}
                   >
                     {w}
                   </button>
@@ -164,17 +230,23 @@ export function Choreographer({
             </div>
           ))}
         </div>
-        {error && <p className="text-sm text-accent-deep px-1">⚠ {error}</p>}
-        <button
-          onClick={save}
-          disabled={isPending}
-          className="w-full h-16 rounded-2xl bg-accent text-white text-xl font-semibold shadow-sm active:scale-[0.99] transition-transform disabled:opacity-60"
-        >
-          Save
-        </button>
-        <button onClick={() => setScreen("moves")} disabled={isPending} className="w-full h-14 rounded-2xl border border-line bg-surface font-semibold">
-          Back to the moves
-        </button>
+        {asking ? (
+          askCard
+        ) : (
+          <>
+            {error && <p className="text-sm text-accent-deep px-1">⚠ {error}</p>}
+            <button
+              onClick={save}
+              disabled={isPending}
+              className="w-full h-16 rounded-2xl bg-accent text-white text-xl font-semibold shadow-sm active:scale-[0.99] transition-transform disabled:opacity-60"
+            >
+              Save
+            </button>
+            <button onClick={() => setScreen("moves")} disabled={isPending} className="w-full h-14 rounded-2xl border border-line bg-surface font-semibold">
+              Back to the moves
+            </button>
+          </>
+        )}
       </div>
     );
   }
@@ -212,18 +284,7 @@ export function Choreographer({
       </div>
 
       {asking ? (
-        <div className="rounded-[1.25rem] bg-surface border border-line p-4 space-y-3">
-          <p className="text-center font-semibold">Save this dance?</p>
-          {error && <p className="text-sm text-accent-deep text-center">⚠ {error}</p>}
-          <div className="flex gap-2">
-            <button onClick={save} disabled={isPending} className="flex-1 h-14 rounded-xl bg-accent text-white font-semibold disabled:opacity-60">
-              Save
-            </button>
-            <button onClick={onLeave} disabled={isPending} className="flex-1 h-14 rounded-xl border border-line font-semibold">
-              Don’t save
-            </button>
-          </div>
-        </div>
+        askCard
       ) : (
         <>
           <button

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { askBeforeLeaving } from "@/lib/leave-guard";
 
 // Same four tabs, same order, every day — the layout never rearranges itself.
 const tabs = [
@@ -14,6 +15,7 @@ const tabs = [
 /** stageDot: today's workout is done and she has not danced yet — a small gold dot on the Stage tab. */
 export function BottomNav({ stageDot = false }: { stageDot?: boolean }) {
   const pathname = usePathname();
+  const router = useRouter();
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-line bg-surface/90 backdrop-blur-lg">
       <div className="flex max-w-lg mx-auto">
@@ -24,6 +26,10 @@ export function BottomNav({ stageDot = false }: { stageDot?: boolean }) {
               key={t.href}
               href={t.href}
               prefetch
+              onClick={(e) => {
+                // Unsaved work (a new dance) asks once before the tab changes.
+                if (!active && askBeforeLeaving(() => router.push(t.href))) e.preventDefault();
+              }}
               className={`flex-1 flex flex-col items-center gap-0.5 pt-3 pb-[max(0.9rem,env(safe-area-inset-bottom))] text-sm font-medium select-none transition-colors ${
                 active ? "text-accent-deep" : "text-muted"
               }`}

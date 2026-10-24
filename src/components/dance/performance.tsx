@@ -11,6 +11,7 @@ import { useDancePlayer, CARD_BEATS, type ShowItem } from "@/lib/dance-player";
 import { MOVE_BY_KEY, NONE_KEY, PIROUETTES_CHOICE_NAME, QUIET_KEY, SPARKLES, type MoveKey } from "@/lib/dance-content";
 import { SONGS, type Song } from "@/lib/music";
 import { playNote, setVolume } from "@/lib/sound";
+import { unwrap } from "@/lib/action-result";
 
 const CATCH_WINDOW_MS = 400;
 const CURTAIN_OPEN_MS = 2500;
@@ -227,7 +228,7 @@ export function Performance({
     }
     startTransition(async () => {
       try {
-        begin(await startDance(danceId));
+        begin(unwrap(await startDance(danceId, look)));
       } catch (e) {
         setError(e instanceof Error ? e.message : "That didn’t work — try again.");
       }

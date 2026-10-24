@@ -1,5 +1,6 @@
 "use server";
 
+import { attempt, Friendly, type ActionResult } from "@/lib/action-result";
 import { supabase } from "@/lib/db";
 import { todayLocal } from "@/lib/dates";
 import { revalidatePath } from "next/cache";
@@ -12,6 +13,7 @@ import {
 import {
   countN, countNMax, programLine, readyRecital, recitalOnTime, decorations, unlockedKeys, slotCount, pirouettesChoice,
   unlockedMoves, ambientSparkles, newSinceLastTime, newTodayLine, todayRow as todayRowOf, programDances, rosettes,
+  maxPerformed, posterDances,
   type EarnedRosette, type ProgramLine, type StageInput,
 } from "@/lib/dance-progress";
 import { loadRosetteExtras, loadStageInput } from "@/lib/stage-data";
@@ -26,6 +28,8 @@ export type RecitalPlan = {
   dances: { name: string; moves: MoveKey[] }[];
   /** Every unlocked move once, in catalog order. */
   finale: MoveKey[];
+  /** The poster's dances, exactly as startDance stores them, so the Bow's poster is the Season map's. */
+  posterDances: MoveKey[][];
 };
 
 export type PerformancePlan = {
@@ -90,7 +94,22 @@ function recitalPlan(input: StageInput): RecitalPlan | null {
     onTime: recitalOnTime(input),
     dances: programDances(input, ready).map((d) => ({ name: d.name, moves: d.moves ?? pirouettesChoice(nMax) })),
     finale: unlockedMoves(nMax),
+    posterDances: posterDances(input, ready),
   };
+}
+
+/** Every look value must be a catalog key she has reached (plus Quiet and None). */
+function checkLook(look: Partial<Look>, allowed: Set<string>) {
+  const check = (value: string | undefined, keys: string[], extra: string[], what: string) => {
+    if (value == null) return;
+    if (!(extra.includes(value) || (keys.includes(value) && allowed.has(value)))) {
+      throw new Friendly(`That ${what} isn’t ready yet`);
+    }
+  };
+  check(look.costume, COSTUMES.map((c) => c.key), [], "costume");
+  check(look.stage, STAGES.map((s) => s.key), [], "stage");
+  check(look.music, MUSIC.map((m) => m.key), [QUIET_KEY], "music");
+  check(look.sparkle, SPARKLES.map((s) => s.key), [NONE_KEY], "sparkle style");
 }
 
 export async function getStageData(): Promise<StageData> {
@@ -123,7 +142,7 @@ export async function getStageData(): Promise<StageData> {
   // Rosettes are only shown, never written on; a failed read leaves them off for this load.
   let earnedRosettes: EarnedRosette[] = [];
   try {
-    earnedRosettes = rosettes(input, await loadRosetteExtras());
+    earnedRosettes = rosettes(input, await loadRosetteExtras(settings.highWaterMoves));
   } catch {
     earnedRosettes = [];
   }
@@ -176,7 +195,7 @@ async function openWorkoutToday() {
   const { data: workout, error } = await supabase
     .from("workouts").select("id, completed_at").eq("performed_on", today).maybeSingle();
   if (error) throw new Error(`Couldn’t reach the stage: ${error.message}`);
-  if (!workout?.completed_at) throw new Error("Finish today’s workout first — then Pirouette dances.");
+  if (!workout?.completed_at) throw new Friendly("Finish today’s workout first — then Pirouette dances.");
   return { id: workout.id as string, today };
 }
 
@@ -186,91 +205,104 @@ async function openWorkoutToday() {
  * to arrive always carries complete state. Touches only the four look columns.
  */
 export async function setLook(look: Partial<Look>) {
-  const today = todayLocal();
-  const { input, workout } = await loadStageInput(today);
-  if (!workout?.completedAt) throw new Error("Finish today’s workout first — then Pirouette dances.");
-  const allowed = unlockedKeys(countNMax(input));
-  const check = (value: string | undefined, keys: string[], extra: string[], what: string) => {
-    if (value == null) return;
-    if (!(extra.includes(value) || (keys.includes(value) && allowed.has(value)))) {
-      throw new Error(`That ${what} isn’t ready yet`);
-    }
-  };
-  check(look.costume, COSTUMES.map((c) => c.key), [], "costume");
-  check(look.stage, STAGES.map((s) => s.key), [], "stage");
-  check(look.music, MUSIC.map((m) => m.key), [QUIET_KEY], "music");
-  check(look.sparkle, SPARKLES.map((s) => s.key), [NONE_KEY], "sparkle style");
+  return attempt(async () => {
+    const today = todayLocal();
+    const { input, workout } = await loadStageInput(today);
+    if (!workout?.completedAt) throw new Friendly("Finish today’s workout first — then Pirouette dances.");
+    checkLook(look, unlockedKeys(countNMax(input)));
 
-  const row: Record<string, unknown> = { workout_id: workout.id };
-  if (look.costume != null) row.costume = look.costume;
-  if (look.stage != null) row.stage = look.stage;
-  if (look.music != null) row.music = look.music;
-  if (look.sparkle != null) row.sparkle = look.sparkle;
-  const { error } = await supabase.from("rehearsals").upsert(row, { onConflict: "workout_id" });
-  if (error) throw new Error(error.message);
-  revalidatePath("/dance");
-  revalidatePath("/");
+    const row: Record<string, unknown> = { workout_id: workout.id };
+    if (look.costume != null) row.costume = look.costume;
+    if (look.stage != null) row.stage = look.stage;
+    if (look.music != null) row.music = look.music;
+    if (look.sparkle != null) row.sparkle = look.sparkle;
+    const { error } = await supabase.from("rehearsals").upsert(row, { onConflict: "workout_id" });
+    if (error) throw new Error(error.message);
+    revalidatePath("/dance");
+    revalidatePath("/");
+  });
 }
 
 /**
- * "Start the dance": snapshot what will play onto today's row. danced_at is set
- * only if null; recital_program only when a recital is ready and the column is
- * null. The returned plan is exactly what the client plays.
+ * "Start the dance": snapshot what will play onto today's row, in the look on
+ * screen. danced_at (with the look it was first danced in) is set only if null;
+ * recital_program only when a recital is ready and the column is null, and with
+ * it the poster dances of that Program and of any skipped one before it, so
+ * posters never change. The returned plan is exactly what the client plays.
  */
-export async function startDance(danceId: string | null): Promise<PerformancePlan> {
-  const today = todayLocal();
-  const { input, workout } = await loadStageInput(today);
-  if (!workout?.completedAt) throw new Error("Finish today’s workout first — then Pirouette dances.");
-  const nMax = countNMax(input);
+export async function startDance(danceId: string | null, look: Look): Promise<ActionResult<PerformancePlan>> {
+  return attempt(async () => {
+    const today = todayLocal();
+    const { input, workout } = await loadStageInput(today);
+    if (!workout?.completedAt) throw new Friendly("Finish today’s workout first — then Pirouette dances.");
+    const nMax = countNMax(input);
+    checkLook(look, unlockedKeys(nMax));
 
-  let name = PIROUETTES_CHOICE_NAME;
-  let moves: MoveKey[] = pirouettesChoice(nMax);
-  let id: string | null = null;
-  if (danceId) {
-    const { data: d, error } = await supabase.from("dances").select("*").eq("id", danceId).maybeSingle();
-    if (error) throw new Error(`Couldn’t load that dance: ${error.message}`);
-    if (d) {
-      id = d.id as string;
-      name = d.name as string;
-      moves = ((d.moves as string[]) ?? []).filter(isMoveKey);
+    let name = PIROUETTES_CHOICE_NAME;
+    let moves: MoveKey[] = pirouettesChoice(nMax);
+    let id: string | null = null;
+    if (danceId) {
+      // A put-away dance falls back to Pirouette's choice, which is what the screen shows then.
+      const { data: d, error } = await supabase
+        .from("dances").select("*").eq("id", danceId).is("archived_at", null).maybeSingle();
+      if (error) throw new Error(`Couldn’t load that dance: ${error.message}`);
+      if (d) {
+        id = d.id as string;
+        name = d.name as string;
+        moves = ((d.moves as string[]) ?? []).filter(isMoveKey);
+      }
     }
-  }
-  if (moves.length === 0) moves = pirouettesChoice(nMax);
+    if (moves.length === 0) moves = pirouettesChoice(nMax);
 
-  const existing = todayRowOf(input);
-  const update: Record<string, unknown> = { workout_id: workout.id, dance_id: id, dance_name: name, moves };
-  if (!existing?.dancedAt) update.danced_at = new Date().toISOString();
+    const existing = todayRowOf(input);
+    const update: Record<string, unknown> = {
+      workout_id: workout.id, dance_id: id, dance_name: name, moves,
+      costume: look.costume, stage: look.stage, music: look.music, sparkle: look.sparkle,
+    };
+    if (!existing?.dancedAt) {
+      update.danced_at = new Date().toISOString();
+      update.danced_costume = look.costume;
+      update.danced_stage = look.stage;
+    }
 
-  // The recital counts as performed the moment it starts (§5.4), and only once.
-  let recital: RecitalPlan | null = null;
-  const planned = recitalPlan(input);
-  if (planned && existing?.recitalProgram == null) {
-    update.recital_program = planned.program;
-    recital = planned;
-  }
+    // The recital counts as performed the moment it starts (§5.4), and only once.
+    let recital: RecitalPlan | null = null;
+    const planned = recitalPlan(input);
+    if (planned && existing?.recitalProgram == null) {
+      update.recital_program = planned.program;
+      const snapshots: Record<string, MoveKey[][]> = { [planned.program]: planned.posterDances };
+      for (let p = maxPerformed(input) + 1; p < planned.program; p++) snapshots[p] = posterDances(input, p);
+      update.poster_dances = snapshots;
+      recital = planned;
+    }
 
-  const { error } = await supabase.from("rehearsals").upsert(update, { onConflict: "workout_id" });
-  if (error) throw new Error(error.message);
-  revalidatePath("/dance");
-  revalidatePath("/");
-  revalidatePath("/collection");
-  return { dance: { name, moves }, recital };
+    const { error } = await supabase.from("rehearsals").upsert(update, { onConflict: "workout_id" });
+    if (error) throw new Error(error.message);
+    revalidatePath("/dance");
+    revalidatePath("/");
+    revalidatePath("/collection");
+    return { dance: { name, moves }, recital };
+  });
 }
 
 /** "Done for today": the curtains close and stay closed. */
 export async function closeCurtains() {
-  const { id } = await openWorkoutToday();
-  const { error } = await supabase.from("workouts").update({ stage_closed_at: new Date().toISOString() }).eq("id", id);
-  if (error) throw new Error(error.message);
-  revalidatePath("/dance");
-  revalidatePath("/");
+  return attempt(async () => {
+    const { id } = await openWorkoutToday();
+    const { error } = await supabase.from("workouts").update({ stage_closed_at: new Date().toISOString() }).eq("id", id);
+    if (error) throw new Error(error.message);
+    revalidatePath("/dance");
+    revalidatePath("/");
+  });
 }
 
 /** "Open the curtains": free play after Done for today; nothing more is earned. */
 export async function openCurtains() {
-  const { id } = await openWorkoutToday();
-  const { error } = await supabase.from("workouts").update({ stage_closed_at: null }).eq("id", id);
-  if (error) throw new Error(error.message);
-  revalidatePath("/dance");
-  revalidatePath("/");
+  return attempt(async () => {
+    const { id } = await openWorkoutToday();
+    const { error } = await supabase.from("workouts").update({ stage_closed_at: null }).eq("id", id);
+    if (error) throw new Error(error.message);
+    revalidatePath("/dance");
+    revalidatePath("/");
+  });
 }

@@ -21,6 +21,8 @@ export type Settings = {
   reducedMotion: boolean;
   /** Highest completed-workout count ever reached; bumped at Finish, never lowered. */
   highWaterN: number;
+  /** Highest count of movements done on completed workouts; bumped at Finish, never lowered ("100 moves"). */
+  highWaterMoves: number;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -33,4 +35,5 @@ export const DEFAULT_SETTINGS: Settings = {
   bowShowers: true,
   reducedMotion: false,
   highWaterN: 0,
+  highWaterMoves: 0,
 };

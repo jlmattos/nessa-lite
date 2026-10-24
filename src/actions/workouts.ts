@@ -1,5 +1,6 @@
 "use server";
 
+import { attempt, Friendly, type ActionResult } from "@/lib/action-result";
 import { supabase } from "@/lib/db";
 import { todayLocal } from "@/lib/dates";
 import { revalidatePath } from "next/cache";
@@ -197,14 +198,16 @@ export async function getTodayData(): Promise<TodayData> {
 }
 
 export async function startWorkout(routineId: string) {
-  const today = todayLocal();
-  const { data: routine } = await supabase.from("routines").select("name").eq("id", routineId).single();
-  const { error } = await supabase
-    .from("workouts")
-    .insert({ performed_on: today, routine_id: routineId, routine_name: (routine?.name as string) ?? null });
-  // A second tap on the same day just lands on the existing workout.
-  if (error && !/duplicate|unique/i.test(error.message)) throw new Error(error.message);
-  refreshAll();
+  return attempt(async () => {
+    const today = todayLocal();
+    const { data: routine } = await supabase.from("routines").select("name").eq("id", routineId).single();
+    const { error } = await supabase
+      .from("workouts")
+      .insert({ performed_on: today, routine_id: routineId, routine_name: (routine?.name as string) ?? null });
+    // A second tap on the same day just lands on the existing workout.
+    if (error && !/duplicate|unique/i.test(error.message)) throw new Error(error.message);
+    refreshAll();
+  });
 }
 
 /** She tapped Done on a movement. Double taps are absorbed by the unique index. */
@@ -214,50 +217,66 @@ export async function completeMovement(
   reps: number | null,
   secs: number | null
 ) {
-  const { error } = await supabase
-    .from("movement_completions")
-    .insert({ workout_id: workoutId, movement_id: movementId, reps, secs });
-  if (error && !/duplicate|unique/i.test(error.message)) throw new Error(error.message);
-  revalidatePath("/");
+  return attempt(async () => {
+    const { error } = await supabase
+      .from("movement_completions")
+      .insert({ workout_id: workoutId, movement_id: movementId, reps, secs });
+    if (error && !/duplicate|unique/i.test(error.message)) throw new Error(error.message);
+    revalidatePath("/");
+  });
 }
 
 export async function undoCompletion(completionId: string) {
-  const { error } = await supabase.from("movement_completions").delete().eq("id", completionId);
-  if (error) throw new Error(error.message);
-  revalidatePath("/");
+  return attempt(async () => {
+    const { error } = await supabase.from("movement_completions").delete().eq("id", completionId);
+    if (error) throw new Error(error.message);
+    revalidatePath("/");
+  });
 }
 
 /** The clear ending: marks the day complete, unlocks the dance, and raises the high-water mark. */
 export async function finishWorkout(workoutId: string) {
-  const { error } = await supabase
-    .from("workouts")
-    .update({ completed_at: new Date().toISOString() })
-    .eq("id", workoutId);
-  if (error) throw new Error(error.message);
-  const { count } = await supabase
-    .from("workouts").select("id", { count: "exact", head: true }).not("completed_at", "is", null);
-  try {
-    await bumpHighWater(count ?? 0);
-  } catch {
-    // The stage columns may not exist yet; the day is still complete.
-  }
-  refreshAll();
+  return attempt(async () => {
+    const { error } = await supabase
+      .from("workouts")
+      .update({ completed_at: new Date().toISOString() })
+      .eq("id", workoutId);
+    if (error) throw new Error(error.message);
+    const [w, m] = await Promise.all([
+      supabase.from("workouts").select("id", { count: "exact", head: true }).not("completed_at", "is", null),
+      supabase
+        .from("movement_completions")
+        .select("id, workouts!inner(completed_at)", { count: "exact", head: true })
+        .not("workouts.completed_at", "is", null),
+    ]);
+    try {
+      // A failed count reads as 0, which never lowers a high-water mark.
+      await bumpHighWater(w.error ? 0 : w.count ?? 0, m.error ? 0 : m.count ?? 0);
+    } catch {
+      // The day is still complete; the marks catch up at the next Finish.
+    }
+    refreshAll();
+  });
 }
 
 /** Reopening the workout also reopens the stage (GAME-DESIGN.md §3.10). */
 export async function reopenWorkout(workoutId: string) {
-  const { error } = await supabase
-    .from("workouts").update({ completed_at: null, stage_closed_at: null }).eq("id", workoutId);
-  if (error) throw new Error(error.message);
-  refreshAll();
+  return attempt(async () => {
+    const { error } = await supabase
+      .from("workouts").update({ completed_at: null, stage_closed_at: null }).eq("id", workoutId);
+    if (error) throw new Error(error.message);
+    refreshAll();
+  });
 }
 
 /** Escape hatch: delete an accidentally-started workout with nothing done. */
 export async function cancelWorkout(workoutId: string) {
-  const { count } = await supabase
-    .from("movement_completions").select("id", { count: "exact", head: true }).eq("workout_id", workoutId);
-  if ((count ?? 0) > 0) throw new Error("This workout already has movements done");
-  const { error } = await supabase.from("workouts").delete().eq("id", workoutId);
-  if (error) throw new Error(error.message);
-  refreshAll();
+  return attempt(async () => {
+    const { count } = await supabase
+      .from("movement_completions").select("id", { count: "exact", head: true }).eq("workout_id", workoutId);
+    if ((count ?? 0) > 0) throw new Friendly("This workout already has movements done");
+    const { error } = await supabase.from("workouts").delete().eq("id", workoutId);
+    if (error) throw new Error(error.message);
+    refreshAll();
+  });
 }

@@ -108,11 +108,14 @@ function Decorations({ keys, rosettes }: { keys: string[]; rosettes: StageRosett
       )}
       {keys.includes("string_lights") && (
         <g>
-          {/* a shallow swag: the lowest bulb clears her bun at the top of a Sauté hop, and the edge bulbs stay below the garland */}
-          <path d="M0 30 Q200 54 400 30" stroke="#8a7f82" strokeWidth="1.5" fill="none" />
-          {[30, 90, 150, 210, 270, 330, 390].map((x, i) => (
-            <circle key={x} cx={x} cy={30 + Math.sin((i / 6) * Math.PI) * 12} r="3.5" fill={i % 2 ? "#f2b3a6" : "#e6b422"} />
-          ))}
+          {/* Two side swags, nothing in the middle: her bun, bow and Swan feathers stay clear at rest
+              and at the top of a Sauté hop; the bulbs stay below the garland. */}
+          <path d="M0 30 Q80 46 160 30" stroke="#8a7f82" strokeWidth="1.5" fill="none" />
+          <path d="M240 30 Q320 46 400 30" stroke="#8a7f82" strokeWidth="1.5" fill="none" />
+          {[30, 90, 150, 250, 310, 370].map((x, i) => {
+            const t = ((x < 200 ? x : x - 240) / 160);
+            return <circle key={x} cx={x} cy={30 + 32 * t * (1 - t)} r="3.5" fill={i % 2 ? "#f2b3a6" : "#e6b422"} />;
+          })}
         </g>
       )}
       {/* Rosettes, alternating left and right down the tie-back bands (x < 34 and x > 366,

@@ -9,6 +9,7 @@ import {
 } from "@/actions/routine";
 import { NumberInput } from "@/components/number-input";
 import { targetLabel } from "@/lib/format";
+import { unwrap } from "@/lib/action-result";
 
 type Run = (fn: () => Promise<void>) => void;
 
@@ -87,7 +88,7 @@ export function RoutineEditor({ routines }: { routines: Routine[] }) {
               Cancel
             </button>
             <button
-              onClick={() => run(async () => { await addRoutine(newName); setAdding(false); setNewName(""); })}
+              onClick={() => run(async () => { unwrap(await addRoutine(newName)); setAdding(false); setNewName(""); })}
               disabled={isPending || !newName.trim()}
               className="flex-1 h-12 rounded-xl bg-accent text-white font-semibold disabled:opacity-50"
             >
@@ -119,7 +120,7 @@ function RoutineCard({
 
   function saveName() {
     setEditingName(false);
-    if (name.trim() && name.trim() !== routine.name) run(() => renameRoutine(routine.id, name));
+    if (name.trim() && name.trim() !== routine.name) run(async () => { unwrap(await renameRoutine(routine.id, name)); });
     else setName(routine.name);
   }
 
@@ -140,11 +141,11 @@ function RoutineCard({
             {routine.name}
           </button>
         )}
-        <button onClick={() => run(() => moveRoutine(routine.id, -1))} disabled={busy || isFirst} aria-label="Move up" className="w-9 h-9 rounded-lg text-muted disabled:opacity-30">↑</button>
-        <button onClick={() => run(() => moveRoutine(routine.id, 1))} disabled={busy || isLast} aria-label="Move down" className="w-9 h-9 rounded-lg text-muted disabled:opacity-30">↓</button>
+        <button onClick={() => run(async () => { unwrap(await moveRoutine(routine.id, -1)); })} disabled={busy || isFirst} aria-label="Move up" className="w-9 h-9 rounded-lg text-muted disabled:opacity-30">↑</button>
+        <button onClick={() => run(async () => { unwrap(await moveRoutine(routine.id, 1)); })} disabled={busy || isLast} aria-label="Move down" className="w-9 h-9 rounded-lg text-muted disabled:opacity-30">↓</button>
         {confirmDelete ? (
           <span className="flex items-center gap-1 text-xs">
-            <button onClick={() => run(() => deleteRoutine(routine.id))} disabled={busy} className="text-accent-deep font-medium px-2 py-1">Delete</button>
+            <button onClick={() => run(async () => { unwrap(await deleteRoutine(routine.id)); })} disabled={busy} className="text-accent-deep font-medium px-2 py-1">Delete</button>
             <button onClick={() => setConfirmDelete(false)} className="text-muted px-2 py-1">Keep</button>
           </span>
         ) : (
@@ -203,11 +204,11 @@ function MovementRow({
           <p className="font-medium truncate">{index}. {m.name}</p>
           <p className="text-xs text-muted">{targetLabel(m.targetReps, m.targetSecs)}{m.cue ? ` · ${m.cue}` : ""}</p>
         </button>
-        <button onClick={() => run(() => moveRoutineMovement(m.id, -1))} disabled={busy || isFirst} aria-label="Move up" className="w-9 h-9 rounded-lg text-muted disabled:opacity-30">↑</button>
-        <button onClick={() => run(() => moveRoutineMovement(m.id, 1))} disabled={busy || isLast} aria-label="Move down" className="w-9 h-9 rounded-lg text-muted disabled:opacity-30">↓</button>
+        <button onClick={() => run(async () => { unwrap(await moveRoutineMovement(m.id, -1)); })} disabled={busy || isFirst} aria-label="Move up" className="w-9 h-9 rounded-lg text-muted disabled:opacity-30">↑</button>
+        <button onClick={() => run(async () => { unwrap(await moveRoutineMovement(m.id, 1)); })} disabled={busy || isLast} aria-label="Move down" className="w-9 h-9 rounded-lg text-muted disabled:opacity-30">↓</button>
         {confirmRemove ? (
           <span className="flex items-center gap-1 text-xs">
-            <button onClick={() => run(() => removeRoutineMovement(m.id))} disabled={busy} className="text-accent-deep font-medium px-2 py-1">Remove</button>
+            <button onClick={() => run(async () => { unwrap(await removeRoutineMovement(m.id)); })} disabled={busy} className="text-accent-deep font-medium px-2 py-1">Remove</button>
             <button onClick={() => setConfirmRemove(false)} className="text-muted px-2 py-1">Keep</button>
           </span>
         ) : (
@@ -231,7 +232,7 @@ function MovementRow({
             <button onClick={() => setEditing(false)} className="flex-1 h-11 rounded-xl border border-line font-medium">Cancel</button>
             <button
               onClick={() => run(async () => {
-                await updateRoutineMovement(m.id, parseInt(reps) || null, parseInt(secs) || null);
+                unwrap(await updateRoutineMovement(m.id, parseInt(reps) || null, parseInt(secs) || null));
                 setEditing(false);
               })}
               disabled={busy}
@@ -313,7 +314,7 @@ function AddMovementForm({
         <button onClick={onClose} className="flex-1 h-12 rounded-xl border border-line font-medium">Cancel</button>
         <button
           onClick={() => run(async () => {
-            await addMovementToRoutine(routineId, name, icon, cue.trim() || null, parseInt(reps) || null, parseInt(secs) || null);
+            unwrap(await addMovementToRoutine(routineId, name, icon, cue.trim() || null, parseInt(reps) || null, parseInt(secs) || null));
             onClose();
           })}
           disabled={busy || !name.trim()}

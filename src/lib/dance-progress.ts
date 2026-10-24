@@ -24,6 +24,11 @@ export type RehearsalRow = {
   recitalProgram: number | null;
   sparklesCaught: number;
   dancedAt: string | null;
+  /** The look at the evening's first "Start the dance" (the look columns stay editable all evening). */
+  dancedCostume?: string | null;
+  dancedStage?: string | null;
+  /** Poster snapshots written when a recital started on this row, by Program. */
+  posterDances?: Record<string, string[][]> | null;
 };
 
 export type StageInput = {
@@ -371,15 +376,31 @@ export function posterFor(program: number, look: { costume: string; stage: strin
 }
 
 /**
+ * A Program's poster dances, derived: the distinct snapshots of its rehearsal
+ * rows, a missing one being Pirouette's choice as it was at the Program's end.
+ * startDance stores this when the recital starts, so it is frozen from then on.
+ */
+export function posterDances(input: StageInput, program: number): MoveKey[][] {
+  const endN = program * WORKOUTS_PER_PROGRAM;
+  return programDances(input, program, endN).map((d) => d.moves ?? pirouettesChoice(endN));
+}
+
+/**
  * Every poster she has, keyed by Program: one for each Program at or below the
  * highest performed recital, so a skipped recital's poster derives too. The
- * look is the row that performed the recital, or the Program's last rehearsal
- * row; a missing snapshot is Pirouette's choice as it was at the Program's
- * end, so a poster never changes afterwards.
+ * look is the one the recital was first danced in, or the Program's last
+ * rehearsal row (whose look can't change once its day is over); the dances are
+ * the snapshot stored when a recital started, so a poster never changes.
  */
 export function posters(input: StageInput): Map<number, Poster> {
   const out = new Map<number, Poster>();
   const top = maxPerformed(input);
+  const stored = new Map<number, MoveKey[][]>();
+  for (const r of input.rehearsals) {
+    for (const [p, dances] of Object.entries(r.posterDances ?? {})) {
+      stored.set(Number(p), dances.map((d) => d.filter(isMoveKey)));
+    }
+  }
   for (let program = 1; program <= top; program++) {
     const inProgram = input.rehearsals
       .map((r) => ({ r, o: ordinalOf(input, r.performedOn) }))
@@ -387,10 +408,11 @@ export function posters(input: StageInput): Map<number, Poster> {
       .sort((a, b) => a.o - b.o)
       .map(({ r }) => r);
     const performer = input.rehearsals.find((r) => r.recitalProgram === program && r.dancedAt);
-    const lookRow = performer ?? inProgram[inProgram.length - 1] ?? null;
-    const endN = program * WORKOUTS_PER_PROGRAM;
-    const dances = programDances(input, program, endN).map((d) => d.moves ?? pirouettesChoice(endN));
-    out.set(program, posterFor(program, lookRow ?? { costume: "classic", stage: "practice_room" }, dances));
+    const last = inProgram[inProgram.length - 1] ?? null;
+    const look = performer
+      ? { costume: performer.dancedCostume ?? performer.costume, stage: performer.dancedStage ?? performer.stage }
+      : last ?? { costume: "classic", stage: "practice_room" };
+    out.set(program, posterFor(program, look, stored.get(program) ?? posterDances(input, program)));
   }
   return out;
 }

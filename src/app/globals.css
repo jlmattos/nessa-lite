@@ -106,11 +106,18 @@ body {
 }
 .animate-lite-sparkle { animation: lite-sparkle 1.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
 
+/* The editor's full strip glows once: a gold ring fades in and out (opacity only). */
+@keyframes lite-glow {
+  0%, 100% { opacity: 0; }
+  35% { opacity: 1; }
+}
+.animate-lite-glow { animation: lite-glow 0.45s ease-in-out both; }
+
 /* Calm mode (settings) and the OS reduced-motion preference both switch every
    animation off. Static states must always read correctly on their own. */
 @media (prefers-reduced-motion: reduce) {
   .animate-lite-pop, .animate-lite-float, .animate-lite-toast, .lite-flex-arm,
-  .animate-lite-hop, .animate-lite-pirouette, .animate-lite-sway, .animate-lite-sparkle {
+  .animate-lite-hop, .animate-lite-pirouette, .animate-lite-sway, .animate-lite-sparkle, .animate-lite-glow {
     animation: none !important;
   }
 }
@@ -121,7 +128,8 @@ html[data-reduced-motion="true"] .lite-flex-arm,
 html[data-reduced-motion="true"] .animate-lite-hop,
 html[data-reduced-motion="true"] .animate-lite-pirouette,
 html[data-reduced-motion="true"] .animate-lite-sway,
-html[data-reduced-motion="true"] .animate-lite-sparkle {
+html[data-reduced-motion="true"] .animate-lite-sparkle,
+html[data-reduced-motion="true"] .animate-lite-glow {
   animation: none !important;
 }
 

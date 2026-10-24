@@ -15,6 +15,7 @@ import { Performance } from "@/components/dance/performance";
 import { Bow } from "@/components/dance/bow";
 import { ProgramLineView } from "@/components/program-line";
 import { PROGRAMS, ROSETTES } from "@/lib/dance-content";
+import { unwrap } from "@/lib/action-result";
 
 type Step = "get_ready" | "choose" | "dance" | "bow";
 const STEPS: Step[] = ["get_ready", "choose", "dance", "bow"];
@@ -104,7 +105,7 @@ export function DanceFlow({ data }: { data: StageData }) {
         <div className="rounded-[1.25rem] bg-surface border border-line p-4 text-center">
           <p className="font-semibold text-lg">The stage is closed for today.</p>
           <button
-            onClick={() => startTransition(async () => { await openCurtains(); router.refresh(); })}
+            onClick={() => startTransition(async () => { unwrap(await openCurtains()); router.refresh(); })}
             disabled={isPending}
             className="mt-2 min-h-11 px-4 inline-flex items-center text-sm text-muted underline disabled:opacity-60"
           >

@@ -15,6 +15,7 @@ import { targetLabel } from "@/lib/format";
 import { playDone, playFinish, playStart } from "@/lib/sound";
 import { useDancePlayer } from "@/lib/dance-player";
 import type { MoveKey } from "@/lib/dance-content";
+import { unwrap } from "@/lib/action-result";
 
 /**
  * Today (GAME-DESIGN.md §3.0–§3.4, §3.10). The schedule strip shows the whole
@@ -52,7 +53,7 @@ export function TodayView({ data }: { data: TodayData }) {
 
   function start(routineId: string) {
     if (sound) playStart(); // the Start tap also wakes the audio for the chimes to come
-    run(() => startWorkout(routineId));
+    run(async () => { unwrap(await startWorkout(routineId)); });
   }
 
   // ── No workout yet: the plan, then the Start card ──
@@ -216,7 +217,7 @@ export function TodayView({ data }: { data: TodayData }) {
             </div>
             {!closed && (
               <button
-                onClick={() => run(() => reopenWorkout(data.workout!.id))}
+                onClick={() => run(async () => { unwrap(await reopenWorkout(data.workout!.id)); })}
                 disabled={isPending}
                 className="min-h-11 px-2 text-xs text-muted underline shrink-0"
               >
@@ -247,9 +248,9 @@ export function TodayView({ data }: { data: TodayData }) {
           onDone={() => {
             if (sound) playDone();
             setFlexSignal((n) => n + 1);
-            run(() => completeMovement(data.workout!.id, m.movementId, m.targetReps, m.targetSecs));
+            run(async () => { unwrap(await completeMovement(data.workout!.id, m.movementId, m.targetReps, m.targetSecs)); });
           }}
-          onUndo={() => run(() => undoCompletion(m.completion!.id))}
+          onUndo={() => run(async () => { unwrap(await undoCompletion(m.completion!.id)); })}
         />
       ))}
 
@@ -273,7 +274,7 @@ export function TodayView({ data }: { data: TodayData }) {
                   onClick={() => {
                     if (sound) playFinish();
                     run(async () => {
-                      await finishWorkout(data.workout!.id);
+                      unwrap(await finishWorkout(data.workout!.id));
                       setConfirmFinish(false);
                     });
                   }}
@@ -290,7 +291,7 @@ export function TodayView({ data }: { data: TodayData }) {
 
       {!completed && done === 0 && (
         <button
-          onClick={() => run(() => cancelWorkout(data.workout!.id))}
+          onClick={() => run(async () => { unwrap(await cancelWorkout(data.workout!.id)); })}
           disabled={isPending}
           className="w-full min-h-11 text-center text-xs text-muted underline"
         >
@@ -305,12 +306,10 @@ export function TodayView({ data }: { data: TodayData }) {
 function EndingPirouette({ costume, newMove }: { costume: string; newMove: MoveKey | null }) {
   const rig = useRef<HTMLDivElement>(null);
   // Silent: the card appears without a tap, and sound only ever follows a tap.
+  // playMove is stable, so this runs once per mount (twice in dev Strict Mode, harmlessly).
   const { playMove } = useDancePlayer(rig, { sound: false });
-  const played = useRef(false);
   useEffect(() => {
-    if (!newMove || played.current) return;
-    played.current = true;
-    playMove(newMove);
+    if (newMove) playMove(newMove);
   }, [newMove, playMove]);
   return <Pirouette ref={rig} size={56} costume={costume} />;
 }

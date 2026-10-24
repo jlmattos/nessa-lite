@@ -38,15 +38,16 @@ export async function loadStageInput(today: string): Promise<{ input: StageInput
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .map((row: any) => row.recital_program as number);
 
-  // Every evening she danced, whatever happened to its workout afterwards (rosettes can't be lost).
+  // Every evening she danced, whatever happened to its workout afterwards (rosettes can't be lost),
+  // in the look it was first danced in (the look columns stay editable all evening).
   const danced: DancedRow[] = (rows ?? [])
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .filter((row: any) => row.danced_at && row.workouts?.performed_on)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .map((row: any) => ({
       performedOn: row.workouts.performed_on as string,
-      costume: row.costume as string,
-      stage: row.stage as string,
+      costume: (row.danced_costume as string | null) ?? (row.costume as string),
+      stage: (row.danced_stage as string | null) ?? (row.stage as string),
       recitalProgram: (row.recital_program as number | null) ?? null,
       sparklesCaught: (row.sparkles_caught as number) ?? 0,
     }));
@@ -68,6 +69,9 @@ export async function loadStageInput(today: string): Promise<{ input: StageInput
       recitalProgram: (r.recital_program as number | null) ?? null,
       sparklesCaught: (r.sparkles_caught as number) ?? 0,
       dancedAt: (r.danced_at as string | null) ?? null,
+      dancedCostume: (r.danced_costume as string | null) ?? null,
+      dancedStage: (r.danced_stage as string | null) ?? null,
+      posterDances: (r.poster_dances as Record<string, string[][]> | null) ?? null,
     }));
 
   const input: StageInput = {
@@ -95,10 +99,10 @@ export async function loadStageInput(today: string): Promise<{ input: StageInput
 
 /**
  * What the rosettes need beyond the StageInput (§6): the days her own dances
- * were made (put-away ones included) and her completed movements. Throws on a
- * failed read, like loadStageInput.
+ * were made (put-away ones included) and her completed movements, never below
+ * the high-water mark kept at Finish. Throws on a failed read, like loadStageInput.
  */
-export async function loadRosetteExtras(): Promise<RosetteExtras> {
+export async function loadRosetteExtras(highWaterMoves: number): Promise<RosetteExtras> {
   const [d, m] = await Promise.all([
     supabase.from("dances").select("created_at").eq("is_preset", false),
     supabase
@@ -111,7 +115,7 @@ export async function loadRosetteExtras(): Promise<RosetteExtras> {
   }
   return {
     savedOn: (d.data ?? []).map((row) => localDateOf(row.created_at as string)),
-    completedMoves: m.count ?? 0,
+    completedMoves: Math.max(m.count ?? 0, highWaterMoves),
   };
 }
 

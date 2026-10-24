@@ -9,6 +9,7 @@ import { useDancePlayer } from "@/lib/dance-player";
 import { COSTUMES, STAGES, MUSIC, SPARKLES, QUIET_KEY, NONE_KEY, type CatalogItem } from "@/lib/dance-content";
 import { SONGS, sequencer } from "@/lib/music";
 import { getAudioContext, masterOut, setVolume, tone } from "@/lib/sound";
+import { unwrap } from "@/lib/action-result";
 
 type RowKind = keyof Look;
 
@@ -56,7 +57,7 @@ export function GetReady({
       try {
         // The whole look on screen: the first write never falls back to the column
         // defaults, and the last request to arrive always carries complete state.
-        await setLook(nextLook);
+        unwrap(await setLook(nextLook));
       } catch (e) {
         setError(e instanceof Error ? e.message : "That didn’t save — try again.");
       }

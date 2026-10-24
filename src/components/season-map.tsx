@@ -4,6 +4,7 @@ import type { EarnedRosette, SeasonPath, SeasonSlot } from "@/lib/dance-progress
 import { PosterCard } from "@/components/dance/poster";
 import { RosetteIcon } from "@/components/rosette";
 import { stageBackground } from "@/components/dance/stage";
+import { ROSETTES } from "@/lib/dance-content";
 
 const SLOT_W = 48;
 
@@ -14,7 +15,9 @@ const SLOT_W = 48;
  * its poster once a recital at or after it has been performed (a skipped
  * recital's poster derives too, Program 1's included). No count: a skipped
  * recital's slot fills too, so a number would be wrong. Earned rosettes sit
- * under the path; unearned ones never show. Static: nothing moves.
+ * under the path, each in its own fixed cell (catalog order), so one earned
+ * out of order never moves the others; unearned ones are never drawn, only
+ * kept as empty space. Static: nothing moves.
  */
 export function SeasonMap({ paths, rosettes }: { paths: SeasonPath[]; rosettes: EarnedRosette[] }) {
   return (
@@ -37,12 +40,16 @@ export function SeasonMap({ paths, rosettes }: { paths: SeasonPath[]; rosettes: 
             <div className="mt-4 pt-3 border-t border-line">
               <p className="text-xs uppercase tracking-wider text-muted font-semibold">Rosettes</p>
               <div className="mt-2 grid grid-cols-3 gap-2">
-                {rosettes.map((r) => (
-                  <div key={r.key} className="flex items-center gap-2 min-w-0">
-                    <RosetteIcon color={r.color} size={22} />
-                    <span className="text-xs leading-tight">{r.name}</span>
-                  </div>
-                ))}
+                {ROSETTES.slice(0, lastEarnedIndex(rosettes) + 1).map((def) => {
+                  const r = rosettes.find((x) => x.key === def.key);
+                  if (!r) return <div key={def.key} className="h-[27px]" aria-hidden />;
+                  return (
+                    <div key={def.key} className="flex items-center gap-2 min-w-0">
+                      <RosetteIcon color={r.color} size={22} />
+                      <span className="text-xs leading-tight">{r.name}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -50,6 +57,11 @@ export function SeasonMap({ paths, rosettes }: { paths: SeasonPath[]; rosettes: 
       ))}
     </div>
   );
+}
+
+/** The fixed cell of the last earned rosette: cells after it are not drawn at all. */
+function lastEarnedIndex(earned: EarnedRosette[]): number {
+  return Math.max(-1, ...earned.map((r) => ROSETTES.findIndex((d) => d.key === r.key)));
 }
 
 function Slot({ slot }: { slot: SeasonSlot }) {

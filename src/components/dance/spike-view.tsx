@@ -67,7 +67,7 @@ export function SpikeView() {
       {/* Single moves */}
       <Card title="One move at a time">
         <div className="grid grid-cols-2 gap-2">
-          {MOVES.filter((m) => m.shipped).map((m) => (
+          {MOVES.filter((m) => m.shipped || m.key === "grand_spin").map((m) => (
             <button
               key={m.key}
               onClick={() => player.playMove(m.key, bpm)}

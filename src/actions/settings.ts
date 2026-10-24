@@ -1,5 +1,6 @@
 "use server";
 
+import { attempt, Friendly, type ActionResult } from "@/lib/action-result";
 import { supabase } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { DEFAULT_SETTINGS, type Settings } from "@/lib/settings";
@@ -17,6 +18,7 @@ function fromRow(r: any): Settings {
     bowShowers: r.bow_showers ?? d.bowShowers,
     reducedMotion: r.reduced_motion ?? d.reducedMotion,
     highWaterN: typeof r.high_water_n === "number" ? r.high_water_n : d.highWaterN,
+    highWaterMoves: typeof r.high_water_moves === "number" ? r.high_water_moves : d.highWaterMoves,
   };
 }
 
@@ -30,6 +32,7 @@ const COLUMN: Record<keyof Settings, string> = {
   bowShowers: "bow_showers",
   reducedMotion: "reduced_motion",
   highWaterN: "high_water_n",
+  highWaterMoves: "high_water_moves",
 };
 
 /**
@@ -48,21 +51,29 @@ export async function getSettings(): Promise<Settings> {
 }
 
 export async function updateSettings(patch: Partial<Settings>) {
-  const row: Record<string, unknown> = { id: 1, updated_at: new Date().toISOString() };
-  for (const [key, value] of Object.entries(patch)) {
-    if (value != null) row[COLUMN[key as keyof Settings]] = value;
-  }
-  const { error } = await supabase.from("settings").upsert(row, { onConflict: "id" });
-  if (error) throw new Error(error.message);
-  revalidatePath("/", "layout");
+  return attempt(async () => {
+    const row: Record<string, unknown> = { id: 1, updated_at: new Date().toISOString() };
+    for (const [key, value] of Object.entries(patch)) {
+      if (value != null) row[COLUMN[key as keyof Settings]] = value;
+    }
+    const { error } = await supabase.from("settings").upsert(row, { onConflict: "id" });
+    if (error) throw new Error(error.message);
+    revalidatePath("/", "layout");
+  });
 }
 
-/** Called at Finish: the high-water mark only ever goes up, so nothing relocks. */
-export async function bumpHighWater(n: number) {
+/**
+ * Called at Finish: the high-water marks only ever go up, so nothing relocks
+ * and no rosette is lost (workouts ever completed; movements done on them).
+ */
+export async function bumpHighWater(n: number, moves: number) {
   const current = await getSettings();
-  if (n <= current.highWaterN) return;
+  const row: Record<string, unknown> = {};
+  if (n > current.highWaterN) row.high_water_n = n;
+  if (moves > current.highWaterMoves) row.high_water_moves = moves;
+  if (Object.keys(row).length === 0) return;
   const { error } = await supabase
     .from("settings")
-    .upsert({ id: 1, high_water_n: n, updated_at: new Date().toISOString() }, { onConflict: "id" });
+    .upsert({ id: 1, ...row, updated_at: new Date().toISOString() }, { onConflict: "id" });
   if (error) throw new Error(error.message);
 }

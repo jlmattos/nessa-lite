@@ -10,6 +10,7 @@ import { PosterCard } from "@/components/dance/poster";
 import { FigurineCat } from "@/components/cats";
 import { useDancePlayer } from "@/lib/dance-player";
 import { posterFor } from "@/lib/dance-progress";
+import { unwrap } from "@/lib/action-result";
 
 /**
  * Step 4 (GAME-DESIGN.md §3.9, §3.10). The curtains close, the cat friends in
@@ -60,14 +61,14 @@ export function Bow({
   // On recital day the recital was the show; on other evenings name the dance she chose.
   const danceName = plan.recital?.onTime ? null : plan.dance.name;
   // Tonight's poster is built from what just played, in the look that played it.
-  const poster = plan.recital ? posterFor(plan.recital.program, look, plan.recital.dances.map((d) => d.moves)) : null;
+  const poster = plan.recital ? posterFor(plan.recital.program, look, plan.recital.posterDances) : null;
   const rosetteLines = data.rosettes.flatMap((r) => (r.line ? [r.line] : []));
 
   function done() {
     setError(null);
     startTransition(async () => {
       try {
-        await closeCurtains();
+        unwrap(await closeCurtains());
         router.refresh();
       } catch (e) {
         setError(e instanceof Error ? e.message : "That didn’t work — try again.");

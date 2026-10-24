@@ -7,6 +7,7 @@ import { Pirouette } from "@/components/dance/pirouette";
 import { useDancePlayer } from "@/lib/dance-player";
 import { MOVE_BY_KEY, FEATURES, PIROUETTES_CHOICE_NAME, type MoveKey } from "@/lib/dance-content";
 import { setVolume } from "@/lib/sound";
+import { unwrap } from "@/lib/action-result";
 
 /**
  * Step 2 (GAME-DESIGN.md §3.7). A fixed 2×2 grid that never reorders:
@@ -47,9 +48,23 @@ export function ChooseDance({
       }
     });
   }
+  /** The dance that was chosen when it was put away: "Put it back" chooses it again (a full one-tap undo). */
+  const wasSelected = useRef<string | null>(null);
   function putAway(d: StageDance) {
-    if (selectedId === d.id) onSelect(null); // its tile is leaving: Pirouette's choice is chosen instead
-    run(() => putAwayDance(d.id!));
+    if (selectedId === d.id) {
+      wasSelected.current = d.id;
+      onSelect(null); // its tile is leaving: Pirouette's choice is chosen instead
+    }
+    run(async () => { unwrap(await putAwayDance(d.id!)); });
+  }
+  function putBack(d: StageDance) {
+    run(async () => {
+      unwrap(await putBackDance(d.id!));
+      if (wasSelected.current === d.id) {
+        wasSelected.current = null;
+        onSelect(d.id);
+      }
+    });
   }
   // The tap Twirl works on every idle Pirouette while the stage is open, as on Get ready.
   const rig = useRef<HTMLDivElement>(null);
@@ -158,7 +173,7 @@ export function ChooseDance({
                 <div key={d.id} className="flex items-center gap-2 text-sm text-muted">
                   <span className="flex-1 min-w-0 truncate">{d.name} is put away.</span>
                   <button
-                    onClick={() => run(() => putBackDance(d.id!))}
+                    onClick={() => putBack(d)}
                     disabled={isPending}
                     className="min-h-11 px-2 underline shrink-0 disabled:opacity-60"
                   >
@@ -232,7 +247,7 @@ function MyDance({
 }) {
   return (
     <div className={`rounded-xl border ${selected ? "border-accent bg-accent-soft/40 ring-2 ring-accent" : "border-line bg-background"}`}>
-      <button onClick={onClick} aria-pressed={selected} className="w-full px-3 pt-2 pb-1 text-left min-h-11">
+      <button onClick={onClick} disabled={busy} aria-pressed={selected} className="w-full px-3 pt-2 pb-1 text-left min-h-11">
         <p className="font-medium">{dance.name}</p>
         <p className="text-xs text-muted">{dance.moves.map((m) => MOVE_BY_KEY[m].name).join(" · ")}</p>
       </button>
