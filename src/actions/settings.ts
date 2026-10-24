@@ -67,10 +67,13 @@ export async function updateSettings(patch: Partial<Settings>) {
  * and no rosette is lost (workouts ever completed; movements done on them).
  */
 export async function bumpHighWater(n: number, moves: number) {
-  const current = await getSettings();
+  // Read the marks directly: getSettings falls back to zeros on a failed read, which would lower them.
+  const { data, error: readError } = await supabase
+    .from("settings").select("high_water_n, high_water_moves").eq("id", 1).maybeSingle();
+  if (readError) throw new Error(readError.message);
   const row: Record<string, unknown> = {};
-  if (n > current.highWaterN) row.high_water_n = n;
-  if (moves > current.highWaterMoves) row.high_water_moves = moves;
+  if (n > ((data?.high_water_n as number | undefined) ?? 0)) row.high_water_n = n;
+  if (moves > ((data?.high_water_moves as number | undefined) ?? 0)) row.high_water_moves = moves;
   if (Object.keys(row).length === 0) return;
   const { error } = await supabase
     .from("settings")

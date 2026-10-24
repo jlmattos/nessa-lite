@@ -289,7 +289,8 @@ export function TodayView({ data }: { data: TodayData }) {
         </div>
       )}
 
-      {!completed && done === 0 && (
+      {/* Once Pirouette has danced for this workout it stays: cancelling would take that evening with it. */}
+      {!completed && done === 0 && !stage?.danced && (
         <button
           onClick={() => run(async () => { unwrap(await cancelWorkout(data.workout!.id)); })}
           disabled={isPending}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Settings } from "@/lib/settings";
 import { updateSettings } from "@/actions/settings";
@@ -15,11 +15,17 @@ import { unwrap } from "@/lib/action-result";
 export function SettingsCard({ settings }: { settings: Settings }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
 
   function save(patch: Partial<Settings>) {
+    setError(null);
     startTransition(async () => {
-      unwrap(await updateSettings(patch));
-      router.refresh();
+      try {
+        unwrap(await updateSettings(patch));
+        router.refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "That didn’t work — try again.");
+      }
     });
   }
 
@@ -77,6 +83,7 @@ export function SettingsCard({ settings }: { settings: Settings }) {
           onClick={() => save({ reducedMotion: !settings.reducedMotion })}
         />
       </div>
+      {error && <p className="text-sm text-accent-deep mt-2">⚠ {error}</p>}
     </div>
   );
 }

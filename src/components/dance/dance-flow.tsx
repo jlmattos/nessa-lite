@@ -29,6 +29,7 @@ const STEP_NAME: Record<Step, string> = { get_ready: "Get ready", choose: "Choos
 export function DanceFlow({ data }: { data: StageData }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [openError, setOpenError] = useState<string | null>(null);
   const [step, setStep] = useState<Step>("get_ready");
   const [look, setLookState] = useState<Look>(data.look);
   const [danceId, setDanceId] = useState<string | null>(data.lastDanceId);
@@ -105,12 +106,23 @@ export function DanceFlow({ data }: { data: StageData }) {
         <div className="rounded-[1.25rem] bg-surface border border-line p-4 text-center">
           <p className="font-semibold text-lg">The stage is closed for today.</p>
           <button
-            onClick={() => startTransition(async () => { unwrap(await openCurtains()); router.refresh(); })}
+            onClick={() => {
+              setOpenError(null);
+              startTransition(async () => {
+                try {
+                  unwrap(await openCurtains());
+                  router.refresh();
+                } catch (e) {
+                  setOpenError(e instanceof Error ? e.message : "That didn’t work — try again.");
+                }
+              });
+            }}
             disabled={isPending}
             className="mt-2 min-h-11 px-4 inline-flex items-center text-sm text-muted underline disabled:opacity-60"
           >
             Open the curtains
           </button>
+          {openError && <p className="text-sm text-accent-deep mt-1">⚠ {openError}</p>}
         </div>
         <ProgramLineView line={data.programLine} />
       </div>

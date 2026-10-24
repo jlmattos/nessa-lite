@@ -32,6 +32,8 @@ export type TodayStage = {
   newMove: MoveKey | null;
   /** Workout done and she has not danced yet: the slipper is ringed, the tab has its dot. */
   waiting: boolean;
+  /** Pirouette has danced for today's workout (its evening can't be cancelled away). */
+  danced: boolean;
   /** "Done for today" has closed the stage. */
   closed: boolean;
   /** Her current costume, for the ending and done cards. */
@@ -154,6 +156,7 @@ export async function getTodayData(): Promise<TodayData> {
       newMove: newToday?.move ?? null,
       waiting: stageWaiting(s.input) && !s.workout?.stageClosedAt,
       closed: !!s.workout?.stageClosedAt,
+      danced: s.input.danced.some((d) => d.performedOn === today),
       costume: row?.costume ?? latest?.costume ?? "classic",
     };
   } catch {
@@ -275,6 +278,12 @@ export async function cancelWorkout(workoutId: string) {
     const { count } = await supabase
       .from("movement_completions").select("id", { count: "exact", head: true }).eq("workout_id", workoutId);
     if ((count ?? 0) > 0) throw new Friendly("This workout already has movements done");
+    // Deleting the workout would take its evening on the stage with it (the row cascades): a recital,
+    // a poster snapshot, a rosette. Once Pirouette has danced for it, the workout stays.
+    const { data: row, error: rowError } = await supabase
+      .from("rehearsals").select("danced_at").eq("workout_id", workoutId).maybeSingle();
+    if (rowError) throw new Error(rowError.message);
+    if (row?.danced_at) throw new Friendly("Pirouette already danced for this workout, so it stays.");
     const { error } = await supabase.from("workouts").delete().eq("id", workoutId);
     if (error) throw new Error(error.message);
     refreshAll();

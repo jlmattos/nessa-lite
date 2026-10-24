@@ -62,9 +62,14 @@ export function ChooseDance({
       unwrap(await putBackDance(d.id!));
       if (wasSelected.current === d.id) {
         wasSelected.current = null;
-        onSelect(d.id);
+        startTransition(() => onSelect(d.id)); // lands with the refreshed list
       }
     });
+  }
+  /** Her own choice always wins over a pending "Put it back" restore. */
+  function choose(id: string | null) {
+    wasSelected.current = null;
+    onSelect(id);
   }
   // The tap Twirl works on every idle Pirouette while the stage is open, as on Get ready.
   const rig = useRef<HTMLDivElement>(null);
@@ -132,9 +137,9 @@ export function ChooseDance({
       )}
 
       <div className="grid grid-cols-2 gap-3">
-        <DanceTile name={PIROUETTES_CHOICE_NAME} icon="🩰" selected={selectedId == null} onClick={() => onSelect(null)} />
+        <DanceTile name={PIROUETTES_CHOICE_NAME} icon="🩰" selected={selectedId == null} onClick={() => choose(null)} />
         {presets.map((d) => (
-          <DanceTile key={d.id} name={d.name} icon="🩰" selected={selectedId === d.id} onClick={() => onSelect(d.id)} />
+          <DanceTile key={d.id} name={d.name} icon="🩰" selected={selectedId === d.id} onClick={() => choose(d.id)} />
         ))}
         <DanceTile
           name="New dance"
@@ -161,7 +166,7 @@ export function ChooseDance({
                 dance={d}
                 selected={selectedId === d.id}
                 busy={isPending}
-                onClick={() => onSelect(d.id)}
+                onClick={() => choose(d.id)}
                 onChange={editorUnlocked ? () => onEdit(d) : undefined}
                 onPutAway={() => putAway(d)}
               />
@@ -188,7 +193,8 @@ export function ChooseDance({
 
       <button
         onClick={onNext}
-        className="w-full h-16 rounded-2xl bg-accent text-white text-xl font-semibold shadow-sm active:scale-[0.99] transition-transform"
+        disabled={isPending}
+        className="w-full h-16 rounded-2xl bg-accent text-white text-xl font-semibold shadow-sm active:scale-[0.99] transition-transform disabled:opacity-60"
       >
         Next: Dance
       </button>

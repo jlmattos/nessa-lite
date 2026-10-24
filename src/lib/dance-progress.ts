@@ -51,10 +51,13 @@ export type StageInput = {
 
 export type DancedRow = {
   performedOn: string;
+  /** The look it was first danced in. */
   costume: string;
   stage: string;
   recitalProgram: number | null;
   sparklesCaught: number;
+  /** Poster snapshots stored when a recital started on this row. */
+  posterDances?: Record<string, string[][]> | null;
 };
 
 const SEASON_ONE_END = WORKOUTS_PER_PROGRAM * PROGRAMS_PER_SEASON; // 50
@@ -395,8 +398,9 @@ export function posterDances(input: StageInput, program: number): MoveKey[][] {
 export function posters(input: StageInput): Map<number, Poster> {
   const out = new Map<number, Poster>();
   const top = maxPerformed(input);
+  // Snapshots and the recital's look come from every danced row, whatever its workout's state since.
   const stored = new Map<number, MoveKey[][]>();
-  for (const r of input.rehearsals) {
+  for (const r of input.danced) {
     for (const [p, dances] of Object.entries(r.posterDances ?? {})) {
       stored.set(Number(p), dances.map((d) => d.filter(isMoveKey)));
     }
@@ -407,11 +411,9 @@ export function posters(input: StageInput): Map<number, Poster> {
       .filter(({ o }) => programOf(o) === program)
       .sort((a, b) => a.o - b.o)
       .map(({ r }) => r);
-    const performer = input.rehearsals.find((r) => r.recitalProgram === program && r.dancedAt);
+    const performer = input.danced.find((d) => d.recitalProgram === program);
     const last = inProgram[inProgram.length - 1] ?? null;
-    const look = performer
-      ? { costume: performer.dancedCostume ?? performer.costume, stage: performer.dancedStage ?? performer.stage }
-      : last ?? { costume: "classic", stage: "practice_room" };
+    const look = performer ?? last ?? { costume: "classic", stage: "practice_room" };
     out.set(program, posterFor(program, look, stored.get(program) ?? posterDances(input, program)));
   }
   return out;

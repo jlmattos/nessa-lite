@@ -50,6 +50,7 @@ export async function loadStageInput(today: string): Promise<{ input: StageInput
       stage: (row.danced_stage as string | null) ?? (row.stage as string),
       recitalProgram: (row.recital_program as number | null) ?? null,
       sparklesCaught: (row.sparkles_caught as number) ?? 0,
+      posterDances: (row.poster_dances as Record<string, string[][]> | null) ?? null,
     }));
 
   const rehearsals: RehearsalRow[] = (rows ?? [])
