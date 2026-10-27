@@ -308,6 +308,12 @@ export function newSinceLastTime(input: StageInput): CatalogItem[] {
   return newlyUnlocked(latest, n - 1, countNMax(input));
 }
 
+/** The floor glow for caught sparkles: 0.1 + 0.04 per catch, at most 0.6, none before the first (§5.3). */
+export const catchGlow = (caught: number) => (caught > 0 ? Math.min(0.6, 0.1 + 0.04 * caught) : 0);
+
+/** She has caught a sparkle on some evening: the ring pulses on the beat from then on (§5.3). */
+export const everCaught = (input: StageInput) => input.danced.some((d) => d.sparklesCaught > 0);
+
 /** The gold dot on the Stage tab: today's workout is complete and she has not danced yet. */
 export function stageWaiting(input: StageInput): boolean {
   return input.todayCompleted && !todayRow(input)?.dancedAt;

@@ -16,6 +16,7 @@
  * starts (the Sparkle catch lane times its window from it); onHidden fires when
  * the page is hidden mid-dance, before the stop (the stage goes to the Bow);
  * onStall fires when audio never started (the stage resets its curtains).
+ * onBeat(beat) fires on every beat of a show (the Sparkle catch ring pulses on it).
  * A clock interrupted mid-show (Siri, an alarm, a call) is treated like the
  * page being hidden: it calls onHidden, so the flow goes to the Bow.
  */
@@ -38,6 +39,7 @@ export type PlayerOptions = {
   onMoveStart?: (key: MoveKey) => void;
   onHidden?: () => void;
   onStall?: () => void;
+  onBeat?: (beat: number) => void;
 };
 
 function noteFor(key: MoveKey, at?: number, out?: AudioNode) {
@@ -187,6 +189,7 @@ export function useDancePlayer(rigRef: RefObject<HTMLDivElement | null>, opts: P
       unsubRef.current = sequencer.onBeat((beat, time) => {
         const out = outRef.current ?? undefined;
         const item = at.get(beat);
+        if (beat < doneAt) optsRef.current.onBeat?.(beat);
         if (item?.kind === "card") {
           setMove(null);
           setCurrentIndex(null);

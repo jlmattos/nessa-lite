@@ -3,22 +3,23 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { StageData, Look, PerformancePlan } from "@/actions/dance";
-import { closeCurtains } from "@/actions/dance";
+import { closeCurtains, recordCatches } from "@/actions/dance";
 import { Pirouette } from "@/components/dance/pirouette";
 import { StageBox, stageBackground, type CurtainState, type StageRosette } from "@/components/dance/stage";
 import { PosterCard } from "@/components/dance/poster";
 import { FigurineCat } from "@/components/cats";
 import { useDancePlayer } from "@/lib/dance-player";
-import { posterFor } from "@/lib/dance-progress";
+import { catchGlow, posterFor } from "@/lib/dance-progress";
 import { unwrap } from "@/lib/action-result";
 
 /**
  * Step 4 (GAME-DESIGN.md §3.9, §3.10). The curtains close, the cat friends in
  * the front row clap (one hop each), "The end.", where she is in the Program
  * (or "Recital N complete.", the Program's poster and what is new on the
- * stage), any rosette line earned today ("You made a dance."), then two
- * buttons: Done for today (persisted) and Dance again (replays exactly what
- * just played; nothing more is written).
+ * stage), any rosette line earned today ("You made a dance."), "You caught
+ * 12 sparkles." only if Jose turned that on, then two buttons: Done for today
+ * (persisted) and Dance again (replays exactly what just played). The dance's
+ * caught sparkles are recorded here, once, and glow on the floor.
  */
 export function Bow({
   data,
@@ -27,6 +28,8 @@ export function Bow({
   decorations,
   rosettes,
   newDecorations,
+  caught,
+  caughtTonight,
   onDanceAgain,
 }: {
   data: StageData;
@@ -38,6 +41,10 @@ export function Bow({
   rosettes: StageRosette[];
   /** Names of the decorations tonight's recital added, for the one announcement. */
   newDecorations: string[];
+  /** Sparkles caught in the dance that just ended (recorded here, once). */
+  caught: number;
+  /** Sparkles caught this visit, this dance included (the floor glow, the optional count). */
+  caughtTonight: number;
   onDanceAgain: () => void;
 }) {
   const router = useRouter();
@@ -54,6 +61,17 @@ export function Bow({
     bowed.current = true;
     playBow();
   }, [playBow]);
+  // recordCatches runs once per dance, here, whether the dance finished, was stopped or was hidden.
+  const recorded = useRef(false);
+  useEffect(() => {
+    if (recorded.current || caught <= 0) return;
+    recorded.current = true;
+    const save = () => recordCatches(caught).then(unwrap);
+    // One quiet retry; the count is never shown to her, so a failure stays silent.
+    save().catch(() => window.setTimeout(() => void save().catch(() => {}), 1500));
+  }, [caught]);
+  // Her first catch ever is announced at once; the rosette's own line takes over when the data refreshes.
+  const [firstCatch] = useState(() => !data.everCaught && caughtTonight > 0);
   // The curtains close over 3 s as the Bow opens; in calm mode they are simply closed.
   const curtains: CurtainState = calm ? "closed" : "closing";
   // What just played decides the line, not the text computed before the dance.
@@ -62,7 +80,14 @@ export function Bow({
   const danceName = plan.recital?.onTime ? null : plan.dance.name;
   // Tonight's poster is built from what just played, in the look that played it.
   const poster = plan.recital ? posterFor(plan.recital.program, look, plan.recital.posterDances) : null;
-  const rosetteLines = data.rosettes.flatMap((r) => (r.line ? [r.line] : []));
+  const rosetteLines = [
+    ...new Set([...data.rosettes.flatMap((r) => (r.line ? [r.line] : [])), ...(firstCatch ? ["You caught a sparkle."] : [])]),
+  ];
+  // Only if Jose turned it on (§10 #4: no numbers by default), and never a zero: no miss feedback.
+  const countLine =
+    data.settings.sparkleCount && caughtTonight > 0
+      ? `You caught ${caughtTonight} sparkle${caughtTonight === 1 ? "" : "s"}.`
+      : null;
 
   function done() {
     setError(null);
@@ -78,7 +103,7 @@ export function Bow({
 
   return (
     <div className="space-y-3">
-      <StageBox stageKey={look.stage} curtains={curtains} decorations={decorations} rosettes={rosettes}>
+      <StageBox stageKey={look.stage} curtains={curtains} decorations={decorations} rosettes={rosettes} glow={catchGlow(caughtTonight)}>
         <Pirouette ref={rig} size={150} costume={look.costume} />
       </StageBox>
 
@@ -106,6 +131,7 @@ export function Bow({
         {rosetteLines.map((l) => (
           <p key={l} className="text-sm font-medium mt-1">{l}</p>
         ))}
+        {countLine && <p className="text-sm text-muted mt-1">{countLine}</p>}
         {danceName && <p className="text-xs text-muted mt-2">{danceName}</p>}
         {error && <p className="text-sm text-accent-deep mt-2">⚠ {error}</p>}
         <div className="mt-4 space-y-2">

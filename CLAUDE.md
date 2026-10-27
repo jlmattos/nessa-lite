@@ -84,8 +84,12 @@ the editor inside Choose a dance (palette, slots, Undo, the naming screen with
 word tiles and Save, "Save this dance?", Change, Put away / Put it back),
 posters on the Season map and at a recital's Bow, rosettes (Season map, curtain
 tie-backs, Bow lines), and content through workout 15 (Sauté, Candy Waltz,
-Sugar Plum, 8 moves per dance, flower garlands). Phase 3 (Sparkle catch
-polish: ring pulse, floor glow, `sparkles_caught`) is next.
+Sugar Plum, 8 moves per dance, flower garlands). Phase 3 is built: after
+her first catch ever the ring pulses on the beat, caught sparkles glow on the
+stage floor through the Bow, the Bow records them once per dance
+(`recordCatches`, also after Stop, hidden and "Dance again"), the "Caught a
+sparkle" rosette, and "Show caught sparkles" (`sparkle_count`, off). Phase 4
+(content drops) is next.
 
 ## Commands
 
@@ -113,7 +117,7 @@ renders (settings fall back to defaults), but every data query throws.
   stage summary) and handles start / done / undo / finish (Finish bumps the
   high-water mark); `routine.ts` is the editor; `progress.ts` feeds the
   collection page; `dance.ts` is the stage (`getStageData`, `setLook`,
-  `startDance`, `closeCurtains`, `openCurtains`); `saved-dances.ts` is her own
+  `startDance`, `recordCatches`, `closeCurtains`, `openCurtains`); `saved-dances.ts` is her own
   dances (`saveDance` new or in place, `putAwayDance`, `putBackDance`; names are
   settled there); `settings.ts` never throws.
 - `src/lib/stage-data.ts` — server-only loader (not an action) that turns the

@@ -11,6 +11,8 @@ import { useDancePlayer, CARD_BEATS, type ShowItem } from "@/lib/dance-player";
 import { MOVE_BY_KEY, NONE_KEY, PIROUETTES_CHOICE_NAME, QUIET_KEY, SPARKLES, type MoveKey } from "@/lib/dance-content";
 import { SONGS, type Song } from "@/lib/music";
 import { playNote, setVolume } from "@/lib/sound";
+import { catchGlow } from "@/lib/dance-progress";
+import { recordCatches } from "@/actions/dance";
 import { unwrap } from "@/lib/action-result";
 
 const CATCH_WINDOW_MS = 400;
@@ -64,6 +66,7 @@ export function Performance({
   replay,
   decorations,
   rosettes,
+  caughtBefore,
   onBow,
 }: {
   data: StageData;
@@ -75,7 +78,10 @@ export function Performance({
   decorations: string[];
   /** Rosettes on the curtain tie-backs (frozen the same way). */
   rosettes: StageRosette[];
-  onBow: (plan: PerformancePlan, stopped: boolean) => void;
+  /** Sparkles caught earlier this visit: the floor glow starts from them. */
+  caughtBefore: number;
+  /** `caught` is this dance's catches, handed over once; the Bow records them. */
+  onBow: (plan: PerformancePlan, stopped: boolean, caught: number) => void;
 }) {
   const rig = useRef<HTMLDivElement>(null);
   const [isPending, startTransition] = useTransition();
@@ -105,7 +111,13 @@ export function Performance({
   const nextId = useRef(1);
   const [burst, setBurst] = useState<number | null>(null);
   const [tap, setTap] = useState<{ id: number; x: number; y: number } | null>(null);
-  const [everCaught, setEverCaught] = useState(false);
+  // A catch on an earlier evening, or earlier this visit ("Dance again"), means the ring already pulses.
+  const [everCaught, setEverCaught] = useState(data.everCaught || caughtBefore > 0);
+  /** This dance's catches, until they are handed to the Bow (then 0, so they are counted once). */
+  const caughtRef = useRef(0);
+  const [caught, setCaught] = useState(0);
+  const ringRef = useRef<HTMLDivElement>(null);
+  const everCaughtRef = useRef(data.everCaught || caughtBefore > 0);
 
   function later(fn: () => void, ms: number) {
     const t = window.setTimeout(() => {
@@ -132,8 +144,28 @@ export function Performance({
       clearOpenTimer();
       for (const t of set) clearTimeout(t);
       set.clear();
+      // Left mid-dance without a Bow (a tab tap): her catches are still kept.
+      const left = caughtRef.current;
+      caughtRef.current = 0;
+      if (left > 0) void recordCatches(left).catch(() => {});
     };
   }, []);
+
+  /** To the Bow, with this dance's catches; any later call hands over 0. */
+  function bow(p: PerformancePlan, stopped: boolean) {
+    const n = caughtRef.current;
+    caughtRef.current = 0;
+    onBow(p, stopped, n);
+  }
+
+  /** After her first catch ever, the ring breathes once on every beat, restarted on the beat clock. */
+  function pulseRing() {
+    const el = ringRef.current;
+    if (!el || !everCaughtRef.current || calm) return;
+    el.classList.remove("animate-lite-ring-pulse");
+    void el.offsetWidth; // reflow, so the same animation restarts
+    el.classList.add("animate-lite-ring-pulse");
+  }
 
   /** A move just started on the beat: its sparkle arrives two beats from now. */
   function launchSparkle(key: MoveKey) {
@@ -150,9 +182,10 @@ export function Performance({
   const player = useDancePlayer(rig, {
     sound: data.settings.sound,
     onMoveStart: launchSparkle,
+    onBeat: () => pulseRing(),
     // Never come back to a half-finished dance: hidden mid-dance goes to the Bow.
     onHidden: () => {
-      if (planRef.current) onBow(planRef.current, true);
+      if (planRef.current) bow(planRef.current, true);
     },
     onStall: () => {
       clearOpenTimer();
@@ -163,7 +196,7 @@ export function Performance({
 
   // The show and its Bow move have played: on to the Bow step (it closes the curtains).
   useEffect(() => {
-    if (player.state === "done" && planRef.current) onBow(planRef.current, false);
+    if (player.state === "done" && planRef.current) bow(planRef.current, false);
   }, [player.state, onBow]);
 
   /**
@@ -173,7 +206,7 @@ export function Performance({
   function abandonHidden() {
     clearOpenTimer();
     pendingRef.current = null;
-    if (planRef.current) onBow(planRef.current, true);
+    if (planRef.current) bow(planRef.current, true);
     else setCurtains("closed");
   }
   useEffect(() => {
@@ -239,7 +272,7 @@ export function Performance({
     clearOpenTimer();
     pendingRef.current = null;
     player.stop(1);
-    if (planRef.current) onBow(planRef.current, true);
+    if (planRef.current) bow(planRef.current, true);
   }
 
   const playing = player.state === "playing" || player.state === "bowing";
@@ -257,6 +290,9 @@ export function Performance({
     if (hit) {
       updateFlights((f) => f.filter((x) => x.id !== hit.id));
       setEverCaught(true);
+      everCaughtRef.current = true; // the ring pulses from the next beat on
+      caughtRef.current += 1;
+      setCaught((c) => c + 1);
       setBurst(hit.id);
       later(() => setBurst((b) => (b === hit.id ? null : b)), 1500);
       if (data.settings.sound) {
@@ -292,6 +328,7 @@ export function Performance({
           curtains={curtains}
           decorations={decorations}
           rosettes={rosettes}
+          glow={catchGlow(caughtBefore + caught)}
           onTap={curtains === "opening" || playing ? onStageTap : undefined}
         >
           <div className="relative">
@@ -313,7 +350,7 @@ export function Performance({
             {/* the still ring at her chest; every Sparkle catch sparkle ends here */}
             {laneOn && playing && (
               <div className="absolute pointer-events-none" style={{ left: "50%", top: "62%", transform: "translate(-50%, -50%)" }} aria-hidden>
-                <div className={`w-20 h-20 rounded-full border-2 ${everCaught ? "border-gold" : "border-gold/60"}`} />
+                <div ref={ringRef} className={`w-20 h-20 rounded-full border-2 ${everCaught ? "border-gold" : "border-gold/60"}`} />
                 {flights.map((f) => (
                   <span
                     key={f.id}

@@ -10,7 +10,8 @@ import { unwrap } from "@/lib/action-result";
 /**
  * The preferences card (GAME-DESIGN.md §7 Controls), in the doc's order.
  * Plain words, two-state switches and two-way choices. Jose or Nessa can
- * change them; they apply everywhere. "Show caught sparkles" arrives in Phase 3.
+ * change them; they apply everywhere. "Show caught sparkles" is off by
+ * default (Jose: no numbers shown, §10 #4).
  */
 export function SettingsCard({ settings }: { settings: Settings }) {
   const router = useRouter();
@@ -67,6 +68,13 @@ export function SettingsCard({ settings }: { settings: Settings }) {
           on={settings.sparkleTaps}
           busy={isPending}
           onClick={() => save({ sparkleTaps: !settings.sparkleTaps })}
+        />
+        <Toggle
+          label="Show caught sparkles"
+          sub="Adds a line like “You caught 12 sparkles.” at the Bow. Off: no numbers anywhere."
+          on={settings.sparkleCount}
+          busy={isPending}
+          onClick={() => save({ sparkleCount: !settings.sparkleCount })}
         />
         <Toggle
           label="Bow showers"

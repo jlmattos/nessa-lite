@@ -38,6 +38,10 @@ export function DanceFlow({ data }: { data: StageData }) {
   const [plan, setPlan] = useState<PerformancePlan | null>(null);
   const [replay, setReplay] = useState<PerformancePlan | null>(null);
   const [dancedThisVisit, setDancedThisVisit] = useState(false);
+  // Sparkles caught this visit (the floor glow, "You caught 12 sparkles.") and in the dance just finished
+  // (what the Bow records once).
+  const [caughtTonight, setCaughtTonight] = useState(0);
+  const [lastCaught, setLastCaught] = useState(0);
   // Frozen at open: startDance revalidates the page mid-dance, and the strip must not change under her.
   const [dancedOnOpen] = useState(data.dancedToday);
   const recitalDay = data.programLine.isRecitalDay;
@@ -51,7 +55,9 @@ export function DanceFlow({ data }: { data: StageData }) {
     list.map((r) => ({ slot: ROSETTES.findIndex((x) => x.key === r.key), color: r.color }));
   const [rosettesOnOpen] = useState<StageRosette[]>(() => toStage(data.rosettes));
 
-  const onBow = useCallback((p: PerformancePlan) => {
+  const onBow = useCallback((p: PerformancePlan, _stopped: boolean, caught: number) => {
+    setCaughtTonight((c) => c + caught);
+    setLastCaught((c) => c + caught);
     if (p.recital) {
       const recitalProgram = p.recital.program;
       const added = PROGRAMS.filter(
@@ -183,12 +189,21 @@ export function DanceFlow({ data }: { data: StageData }) {
           costume={look.costume}
           selectedId={danceId}
           onSelect={setDanceId}
-          onNext={() => { setReplay(null); setStep("dance"); }}
+          onNext={() => { setReplay(null); setLastCaught(0); setStep("dance"); }}
           onEdit={setEditing}
         />
       )}
       {step === "dance" && (
-        <Performance data={data} look={look} danceId={danceId} replay={replay} decorations={decorations} rosettes={rosettes} onBow={onBow} />
+        <Performance
+          data={data}
+          look={look}
+          danceId={danceId}
+          replay={replay}
+          decorations={decorations}
+          rosettes={rosettes}
+          caughtBefore={caughtTonight}
+          onBow={onBow}
+        />
       )}
       {step === "bow" && plan && (
         <Bow
@@ -198,7 +213,9 @@ export function DanceFlow({ data }: { data: StageData }) {
           decorations={decorations}
           rosettes={rosettes}
           newDecorations={newDecorations}
-          onDanceAgain={() => { setReplay(plan); setStep("dance"); }}
+          caught={lastCaught}
+          caughtTonight={caughtTonight}
+          onDanceAgain={() => { setReplay(plan); setLastCaught(0); setStep("dance"); }}
         />
       )}
     </div>

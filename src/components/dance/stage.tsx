@@ -20,6 +20,7 @@ export function StageBox({
   curtains,
   decorations = [],
   rosettes = [],
+  glow = 0,
   onTap,
   children,
   front,
@@ -30,6 +31,8 @@ export function StageBox({
   decorations?: string[];
   /** Earned rosettes, each in its own fixed slot. */
   rosettes?: StageRosette[];
+  /** Tonight's caught sparkles as a soft gold pool on the floor (opacity 0–0.6, static). */
+  glow?: number;
   onTap?: (e: MouseEvent<HTMLDivElement>) => void;
   /** On the stage, behind the curtains. */
   children?: ReactNode;
@@ -46,6 +49,13 @@ export function StageBox({
       <Backdrop stageKey={stageKey} />
       {/* floor */}
       <div className="absolute bottom-0 inset-x-0 h-[14%] bg-black/10" aria-hidden />
+      {glow > 0 && (
+        <div
+          className="absolute bottom-0 inset-x-[12%] h-[22%] pointer-events-none"
+          style={{ opacity: glow, background: "radial-gradient(ellipse at 50% 85%, rgba(230,180,34,0.95) 0%, rgba(230,180,34,0.45) 35%, rgba(230,180,34,0) 70%)" }}
+          aria-hidden
+        />
+      )}
       <div className="absolute inset-0 flex items-end justify-center pb-[8%]">{children}</div>
       {/* curtains */}
       <div className={`stage-curtain-l absolute inset-y-0 left-0 w-1/2 ${CURTAIN}`} data-state={curtains} aria-hidden />

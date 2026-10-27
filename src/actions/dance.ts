@@ -13,7 +13,7 @@ import {
 import {
   countN, countNMax, programLine, readyRecital, recitalOnTime, decorations, unlockedKeys, slotCount, pirouettesChoice,
   unlockedMoves, ambientSparkles, newSinceLastTime, newTodayLine, todayRow as todayRowOf, programDances, rosettes,
-  maxPerformed, posterDances,
+  maxPerformed, posterDances, everCaught,
   type EarnedRosette, type ProgramLine, type StageInput,
 } from "@/lib/dance-progress";
 import { loadRosetteExtras, loadStageInput } from "@/lib/stage-data";
@@ -76,6 +76,8 @@ export type StageData = {
   /** "New since last time: …" item announcements. */
   bannerSince: string[];
   earnedCats: CatId[];
+  /** She has caught a sparkle on some evening before: the ring pulses on the beat. */
+  everCaught: boolean;
   /** Ambient sparkle count with the Sparkle catch lane taken out of the budget. */
   ambient: number;
   /** Earned rosettes in their fixed order (they hang on the curtain tie-backs); unearned ones never appear. */
@@ -184,6 +186,7 @@ export async function getStageData(): Promise<StageData> {
     bannerToday: newToday?.text ?? null,
     bannerSince: row ? [] : newSinceLastTime(input).map(announce),
     earnedCats: computeEarnedCats(n),
+    everCaught: everCaught(input),
     // Two Sparkle catch sparkles can be in flight at once (2-beat moves), so the lane takes two slots.
     ambient: ambientSparkles(n, settings.sparkleAmount, 0, settings.sparkleTaps ? 2 : 0),
     rosettes: earnedRosettes,
@@ -282,6 +285,28 @@ export async function startDance(danceId: string | null, look: Look): Promise<Ac
     revalidatePath("/");
     revalidatePath("/collection");
     return { dance: { name, moves }, recital };
+  });
+}
+
+/**
+ * The Bow: add this dance's caught sparkles to today's row (§5.3), once per
+ * dance, including after Stop and after "Dance again". Nothing else is written.
+ */
+export async function recordCatches(n: number) {
+  return attempt(async () => {
+    if (!Number.isInteger(n) || n <= 0) return;
+    if (n > 500) throw new Error(`recordCatches: ${n} is not a believable count`);
+    const { id } = await openWorkoutToday();
+    const { data: row, error: readError } = await supabase
+      .from("rehearsals").select("sparkles_caught").eq("workout_id", id).maybeSingle();
+    if (readError) throw new Error(readError.message);
+    const total = ((row?.sparkles_caught as number | undefined) ?? 0) + n;
+    const { error } = await supabase
+      .from("rehearsals").upsert({ workout_id: id, sparkles_caught: total }, { onConflict: "workout_id" });
+    if (error) throw new Error(error.message);
+    revalidatePath("/dance");
+    revalidatePath("/collection");
+    revalidatePath("/");
   });
 }
 

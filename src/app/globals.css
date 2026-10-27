@@ -113,11 +113,18 @@ body {
 }
 .animate-lite-glow { animation: lite-glow 0.45s ease-in-out both; }
 
+/* Sparkle catch: after her first catch ever, the ring breathes once on every beat (restarted by the beat clock). */
+@keyframes lite-ring-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  35% { transform: scale(1.08); opacity: 1; }
+}
+.animate-lite-ring-pulse { animation: lite-ring-pulse 0.45s ease-in-out both; }
+
 /* Calm mode (settings) and the OS reduced-motion preference both switch every
    animation off. Static states must always read correctly on their own. */
 @media (prefers-reduced-motion: reduce) {
   .animate-lite-pop, .animate-lite-float, .animate-lite-toast, .lite-flex-arm,
-  .animate-lite-hop, .animate-lite-pirouette, .animate-lite-sway, .animate-lite-sparkle, .animate-lite-glow {
+  .animate-lite-hop, .animate-lite-pirouette, .animate-lite-sway, .animate-lite-sparkle, .animate-lite-glow, .animate-lite-ring-pulse {
     animation: none !important;
   }
 }
@@ -129,7 +136,8 @@ html[data-reduced-motion="true"] .animate-lite-hop,
 html[data-reduced-motion="true"] .animate-lite-pirouette,
 html[data-reduced-motion="true"] .animate-lite-sway,
 html[data-reduced-motion="true"] .animate-lite-sparkle,
-html[data-reduced-motion="true"] .animate-lite-glow {
+html[data-reduced-motion="true"] .animate-lite-glow,
+html[data-reduced-motion="true"] .animate-lite-ring-pulse {
   animation: none !important;
 }
 
