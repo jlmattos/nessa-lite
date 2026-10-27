@@ -64,12 +64,13 @@ export function Bow({
   // recordCatches runs once per dance, here, whether the dance finished, was stopped or was hidden.
   const recorded = useRef(false);
   useEffect(() => {
-    if (recorded.current || caught <= 0) return;
+    const workoutId = data.workoutId;
+    if (recorded.current || caught <= 0 || !workoutId) return;
     recorded.current = true;
-    const save = () => recordCatches(caught).then(unwrap);
+    const save = () => recordCatches(workoutId, caught).then(unwrap);
     // One quiet retry; the count is never shown to her, so a failure stays silent.
     save().catch(() => window.setTimeout(() => void save().catch(() => {}), 1500));
-  }, [caught]);
+  }, [caught, data.workoutId]);
   // Her first catch ever is announced at once; the rosette's own line takes over when the data refreshes.
   const [firstCatch] = useState(() => !data.everCaught && caughtTonight > 0);
   // The curtains close over 3 s as the Bow opens; in calm mode they are simply closed.

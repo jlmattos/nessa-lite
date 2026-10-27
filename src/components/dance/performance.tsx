@@ -118,6 +118,10 @@ export function Performance({
   const [caught, setCaught] = useState(0);
   const ringRef = useRef<HTMLDivElement>(null);
   const everCaughtRef = useRef(data.everCaught || caughtBefore > 0);
+  const workoutIdRef = useRef(data.workoutId);
+  /** After the last move: the last sparkle still gets its whole ±400 ms window before the Bow. */
+  const [tailing, setTailing] = useState(false);
+  const tailingRef = useRef(false);
 
   function later(fn: () => void, ms: number) {
     const t = window.setTimeout(() => {
@@ -147,7 +151,7 @@ export function Performance({
       // Left mid-dance without a Bow (a tab tap): her catches are still kept.
       const left = caughtRef.current;
       caughtRef.current = 0;
-      if (left > 0) void recordCatches(left).catch(() => {});
+      if (left > 0 && workoutIdRef.current) void recordCatches(workoutIdRef.current, left).catch(() => {});
     };
   }, []);
 
@@ -196,7 +200,18 @@ export function Performance({
 
   // The show and its Bow move have played: on to the Bow step (it closes the curtains).
   useEffect(() => {
-    if (player.state === "done" && planRef.current) bow(planRef.current, false);
+    if (player.state !== "done" || !planRef.current || tailingRef.current) return;
+    const now = performance.now();
+    const tail = Math.max(0, ...flightsRef.current.filter((f) => f.phase === "drift").map((f) => f.at + CATCH_WINDOW_MS - now));
+    if (tail <= 0) {
+      bow(planRef.current, false);
+      return;
+    }
+    tailingRef.current = true;
+    setTailing(true);
+    later(() => {
+      if (planRef.current) bow(planRef.current, false);
+    }, tail);
   }, [player.state, onBow]);
 
   /**
@@ -276,6 +291,8 @@ export function Performance({
   }
 
   const playing = player.state === "playing" || player.state === "bowing";
+  // The catch lane outlives the last beat by the last sparkle's window (see the done effect).
+  const laneLive = playing || tailing;
   // The catch burst (6) and the fingertip sparkle (1) borrow from the ambient ones, never below 3.
   const ambientShown = Math.max(Math.min(3, ambient), ambient - (burst != null ? 6 : 0) - (tap ? 1 : 0));
 
@@ -284,7 +301,7 @@ export function Performance({
       reveal(); // tap anywhere skips the curtains
       return;
     }
-    if (!playing || !laneOn) return;
+    if (!laneLive || !laneOn) return;
     const now = performance.now();
     const hit = flightsRef.current.find((f) => f.phase === "drift" && Math.abs(now - f.at) <= CATCH_WINDOW_MS);
     if (hit) {
@@ -329,7 +346,7 @@ export function Performance({
           decorations={decorations}
           rosettes={rosettes}
           glow={catchGlow(caughtBefore + caught)}
-          onTap={curtains === "opening" || playing ? onStageTap : undefined}
+          onTap={curtains === "opening" || laneLive ? onStageTap : undefined}
         >
           <div className="relative">
             {/* ambient sparkles, within the motion budget; off with the None style */}
@@ -348,7 +365,7 @@ export function Performance({
             )}
             <Pirouette ref={rig} size={200} costume={look.costume} sway={playing && !calm} />
             {/* the still ring at her chest; every Sparkle catch sparkle ends here */}
-            {laneOn && playing && (
+            {laneOn && laneLive && (
               <div className="absolute pointer-events-none" style={{ left: "50%", top: "62%", transform: "translate(-50%, -50%)" }} aria-hidden>
                 <div ref={ringRef} className={`w-20 h-20 rounded-full border-2 ${everCaught ? "border-gold" : "border-gold/60"}`} />
                 {flights.map((f) => (

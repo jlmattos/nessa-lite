@@ -40,6 +40,13 @@ export function StageBox({
   front?: ReactNode;
   className?: string;
 }) {
+  const glowPool = glow > 0 && (
+    <div
+      className="absolute bottom-0 inset-x-[12%] h-[22%] pointer-events-none"
+      style={{ opacity: glow, background: "radial-gradient(ellipse at 50% 85%, rgba(230,180,34,0.95) 0%, rgba(230,180,34,0.45) 35%, rgba(230,180,34,0) 70%)" }}
+      aria-hidden
+    />
+  );
   return (
     <div
       className={`relative w-full aspect-[4/3] rounded-[1.25rem] border border-line overflow-hidden select-none ${className}`}
@@ -49,17 +56,13 @@ export function StageBox({
       <Backdrop stageKey={stageKey} />
       {/* floor */}
       <div className="absolute bottom-0 inset-x-0 h-[14%] bg-black/10" aria-hidden />
-      {glow > 0 && (
-        <div
-          className="absolute bottom-0 inset-x-[12%] h-[22%] pointer-events-none"
-          style={{ opacity: glow, background: "radial-gradient(ellipse at 50% 85%, rgba(230,180,34,0.95) 0%, rgba(230,180,34,0.45) 35%, rgba(230,180,34,0) 70%)" }}
-          aria-hidden
-        />
-      )}
+      {curtains === "open" && glowPool}
       <div className="absolute inset-0 flex items-end justify-center pb-[8%]">{children}</div>
       {/* curtains */}
       <div className={`stage-curtain-l absolute inset-y-0 left-0 w-1/2 ${CURTAIN}`} data-state={curtains} aria-hidden />
       <div className={`stage-curtain-r absolute inset-y-0 right-0 w-1/2 ${CURTAIN}`} data-state={curtains} aria-hidden />
+      {/* At the Bow (and on any curtain not fully open) the pool lies in front of the curtains, so it stays. */}
+      {curtains !== "open" && glowPool}
       <Decorations keys={decorations} rosettes={rosettes} />
       {front && <div className="absolute inset-0 flex items-end justify-center pb-[8%]">{front}</div>}
     </div>

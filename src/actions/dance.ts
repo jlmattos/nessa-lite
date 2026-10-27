@@ -187,8 +187,9 @@ export async function getStageData(): Promise<StageData> {
     bannerSince: row ? [] : newSinceLastTime(input).map(announce),
     earnedCats: computeEarnedCats(n),
     everCaught: everCaught(input),
-    // Two Sparkle catch sparkles can be in flight at once (2-beat moves), so the lane takes two slots.
-    ambient: ambientSparkles(n, settings.sparkleAmount, 0, settings.sparkleTaps ? 2 : 0),
+    // The lane takes three of the 12 slots: two sparkles can be in flight at once (2-beat moves),
+    // and the ring pulses on the beat after her first catch.
+    ambient: ambientSparkles(n, settings.sparkleAmount, 0, settings.sparkleTaps ? 3 : 0),
     rosettes: earnedRosettes,
   };
 }
@@ -289,20 +290,24 @@ export async function startDance(danceId: string | null, look: Look): Promise<Ac
 }
 
 /**
- * The Bow: add this dance's caught sparkles to today's row (§5.3), once per
- * dance, including after Stop and after "Dance again". Nothing else is written.
+ * The Bow: add this dance's caught sparkles to the evening's row (§5.3), once
+ * per dance, including after Stop and after "Dance again". The row is the one
+ * the stage was opened for (a dance can end after midnight), and it must have
+ * been danced. Nothing else is written.
  */
-export async function recordCatches(n: number) {
+export async function recordCatches(workoutId: string, n: number) {
   return attempt(async () => {
     if (!Number.isInteger(n) || n <= 0) return;
     if (n > 500) throw new Error(`recordCatches: ${n} is not a believable count`);
-    const { id } = await openWorkoutToday();
-    const { data: row, error: readError } = await supabase
-      .from("rehearsals").select("sparkles_caught").eq("workout_id", id).maybeSingle();
-    if (readError) throw new Error(readError.message);
-    const total = ((row?.sparkles_caught as number | undefined) ?? 0) + n;
-    const { error } = await supabase
-      .from("rehearsals").upsert({ workout_id: id, sparkles_caught: total }, { onConflict: "workout_id" });
+    const [w, r] = await Promise.all([
+      supabase.from("workouts").select("completed_at").eq("id", workoutId).maybeSingle(),
+      supabase.from("rehearsals").select("sparkles_caught, danced_at").eq("workout_id", workoutId).maybeSingle(),
+    ]);
+    if (w.error) throw new Error(w.error.message);
+    if (r.error) throw new Error(r.error.message);
+    if (!w.data?.completed_at || !r.data?.danced_at) throw new Error("recordCatches: that evening was not danced");
+    const total = ((r.data.sparkles_caught as number | undefined) ?? 0) + n;
+    const { error } = await supabase.from("rehearsals").update({ sparkles_caught: total }).eq("workout_id", workoutId);
     if (error) throw new Error(error.message);
     revalidatePath("/dance");
     revalidatePath("/collection");

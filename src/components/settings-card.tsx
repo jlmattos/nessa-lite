@@ -71,7 +71,7 @@ export function SettingsCard({ settings }: { settings: Settings }) {
         />
         <Toggle
           label="Show caught sparkles"
-          sub="Adds a line like “You caught 12 sparkles.” at the Bow. Off: no numbers anywhere."
+          sub="Adds a line like “You caught 12 sparkles.” to the Bow card."
           on={settings.sparkleCount}
           busy={isPending}
           onClick={() => save({ sparkleCount: !settings.sparkleCount })}
